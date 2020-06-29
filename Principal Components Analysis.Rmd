@@ -1,0 +1,459 @@
+---
+title: Applying a Principal Components Analysis to the United States Department of
+  Agriculture Food Composition Database
+author: "Maureen Renaud"
+date: "6/23/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+### INTRODUCTION
+
+In this study, I analyzed a data set from the United States Department of Agriculture Food Composition Database^1^.  This database contains data on 8,789 food items and up to 150 food components.  This particular study analyzes 2,223 food items and 46 nutrient variables with Principal Component Analysis.
+After examining the data, I chose to keep the first six Principal Components to adequately represent this data. I found that most prominent nutrients in these components were Water, Energy, Total Lipids, Protein, Magnesium, and Carbohydrates.  Foods with higher amounts of water typically had lower levels of other nutrients and foods with higher levels of other nutrients typically had lower levels of water.
+
+### DATA
+
+The data set used in this study is from the United States Department of Agriculture Food Composition Database.  According to _USDA National Nutrient Database for Standard Reference, Release 28_^1^, it was developed in September 2015 and slightly revised in May 2016.  The database contains 8,789 food items and up to 150 food components.  
+Before begining any analyses, the data was pared down to eliminate rows with missing values, duplicate values, and non-nutrient variables.  This left a data set with 2,223 food items and 46 nutrient variables.  
+
+A complete summary is provided in Figure 1 of the Plots and Tables Section.
+
+```{r warning = F, echo = F}
+
+SR = read.table("ABBREV.txt", header=F, row.names=1, sep="^", quote="~")
+SR = na.omit(SR) # remove rows with missing values
+SR = SR[row.names(SR) != "13352",] # remove "duplicate" entry
+row.names(SR) = SR[,1] # set more meaningful row names
+SR = SR[,-1]
+names(SR) = c("Water_(g)", "Energ_Kcal", "Protein_(g)", "Lipid_Tot_(g)", "Ash_(g)", "Carbohydrt_(g)", "Fiber_TD_(g)", "Sugar_Tot_(g)", "Calcium_(mg)", "Iron_(mg)", "Magnesium_(mg)", "Phosphorus_(mg)", "Potassium_(mg)", "Sodium_(mg)", "Zinc_(mg)", "Copper_(mg)", "Manganese_(mg)", "Selenium_(µg)", "Vit_C_(mg)", "Thiamin_(mg)", "Riboflavin_(mg)", "Niacin_(mg)", "Panto_Acid_(mg)", "Vit_B6_(mg)", "Folate_Tot_(µg)", "Folic_Acid_(µg)", "Food_Folate_(µg)", "Folate_DFE_(µg)", "Choline_Tot_(mg)", "Vit_B12_(µg)", "Vit_A_IU", "Vit_A_RAE", "Retinol_(µg)", "Alpha_Carot_(µg)", "Beta_Carot_(µg)", "Beta_Crypt_(µg)", "Lycopene_(µg)", "Lut+Zea_(µg)", "Vit_E_(mg)", "Vit_D_µg", "Vit_D_IU", "Vit_K_(µg)", "FA_Sat_(g)", "FA_Mono_(g)", "FA_Poly_(g)", "Cholestrl_(mg)", "GmWt_1", "GmWt_Desc1", "GmWt_2", "GmWt_Desc2", "Refuse_Pct")
+SRp = SR[,c(1:46)] # restrict to just the nutrient variables
+```
+
+
+### ANALYSES
+
+I first ran a Principal Component Analysis on the cleaned up data set:
+
+```{r warning = F, message = F}
+pr.out <- prcomp(SRp, scale = T)
+```
+
+##### SCREE PLOT AND CHOOSING PRINCIPAL COMPONENTS
+&nbsp;
+
+After running the PCA, we can examine the scree plot in order to determine how many principal components to focus on.  
+
+```{r echo = F, warning = F, message = F}
+library(factoextra)
+fviz_eig(pr.out, ncp = 15, choice = c("variance", "eigenvalue"), addlabels = T)
+```
+
+In this plot you can see that the the first component explains more than 15% of the variance and subsequent components explains significantly less.  In order to determine how many of these components we should consider, there are a few schools of thought.
+
+First, we could look for the "elbow" in the plot.  There doesn't not appear to be a significant elbow, but a small one does appear after the sixth component.  So, we could consider just the first six components.
+
+We could consider any component that explains more than it's "fair" share of the variance, fair being defined as more than 1/p of the variance, according to the Tutorial _Principal Components Analysis (PCA)_^2^. In this case, 1/p = 1/46 = .02173913.  So, we would consider the first 14 components.
+
+We could also consider the components that explain 65% of the data.  In this case, we would need to consider the first ten principal components.
+
+It could actually be counter-productive to evaluate too many principal components due to the overwhelming amount of data, so for this study I will choose the "elbow" method and focus on the first six components.
+
+##### EXAMINING THE MOST PROMINENT COMPONENTS
+&nbsp;
+
+Next, I would like to determine the nutrients that are most prominent in the first six components.  One way to do this is to look at the most prevalent nutrients in each component.
+
+```{r warning = F, echo = F, message = F}
+library(cowplot)
+
+One <- fviz_contrib(pr.out, choice = "var", axes = 1, top = 10, title ="PC 1")
+
+Two <- fviz_contrib(pr.out, choice = "var", axes = 2, top = 10, title ="PC 2")
+
+Three <- fviz_contrib(pr.out, choice = "var", axes = 3, top = 10, title ="PC 3")
+
+Four <- fviz_contrib(pr.out, choice = "var", axes = 4, top = 10, title ="PC 4")
+
+Five <- fviz_contrib(pr.out, choice = "var", axes = 5, top = 10, title ="PC 5")
+
+Six <- fviz_contrib(pr.out, choice = "var", axes = 6, top = 10, title ="PC 6")
+
+Individual.plot <- plot_grid(One, Two, Three, Four, Five, Six, align = 'h')
+
+title <- ggdraw() + 
+  draw_label(
+    "Contribution of Variables to the First Six Principal Components",
+    x = 0,
+    hjust = 0, , fontfamily = "serif", size = 16
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, Individual.plot,
+  ncol = 1,
+  rel_heights = c(0.1, 1)
+)
+```
+
+
+This is certainly informative, however because the nutrients vary between the components, its hard to determine which ones are most prominent in all six components.  
+
+In order to rectify this, we look to the text _An Introduction to Statistical Learning_^3^, which notes that the first principal component of a set of features is the normalized linear combination of the features.  Normalized means that the sum of the squared loadings is equal to one.
+
+
+Squaring the loading of each element in a given component gives its relative contribution to that component.  If we multiply that contribution by the proportion of variance explained by each component, we will be able to calculate which nutrients have the greatest impact over multiple components.
+
+The below table is based on this method.  Additonally, I added a new column indicating whether each nutrient was a Proximate, Vitamin, Mineral, or Lipid to help with the visualizations later in this study.  The USDA nutritional reference^1^ does not include Energy in any of these categories, so I have left it as a category of its own.
+
+```{r message = F, warning = F, echo = F}
+library(reshape2)
+
+pr.var =pr.out$sdev^2
+pve=pr.var/sum(pr.var)
+pve.mat = matrix(rep(pve, each = 6), nrow=length(pve))
+
+contribution = apply(pr.out$rotation[,c(1:6)]^2 * pve.mat, 1, sum)
+new.contribution <- melt(contribution)
+
+Categories <- c(rep.int("Proximates", 1), rep.int("Energy", 1), rep.int("Proximates", 6), 
+                rep.int("Minerals", 10), rep.int("Vitamins", 24), rep.int("Lipids",4))
+new.contrib.cat <- data.frame(cbind(new.contribution, Categories))
+new.contrib.cat
+```
+
+We can now reorder and plot these elements to get an idea of which ones have the greatest contribution to the first six principal components.
+
+```{r echo = F}
+
+ggplot(data=new.contrib.cat, aes(fill=Categories)) +
+   geom_col(aes(x=reorder(rownames(new.contrib.cat), -value), y=value)) +
+   theme(axis.text.x = element_text(angle = 90)) +
+   labs(x="Nutrients", y="Variable Prominence") +
+   ggtitle("Most Prominent Nutrients in the First Six Principal Components")
+```
+
+The plot is also color coded based on whether the nutrient is a proximate, vitamin, mineral, or lipid. 
+
+It's interesting to note that the proximates make up five of the seven largest contributers to the top six principal components. According to the nutritional reference^1^, proximates are the macronutrients that make up our food.  So, it is logical that they are going to be among the most prominent nutrients in the various food items.  I also find it interesting to see Magnesium in the top six. 
+
+#### BIPLOT
+&nbsp;
+
+Next we move to a biplot of the individuals and variables in the first two principal components.  Because there are so many individuals and variables in this study, the biplot is rather cluttered:
+
+```{r echo = F}
+fviz_pca_biplot(pr.out, labels = FALSE)
+```
+
+To combat this situation, I have broken the plots down into individuals plots and variables plots.
+
+#### INDIVIDUALS PLOT
+&nbsp;
+
+Now that I have identified the most prominent variables, we will examine plots of the indiviudals (foods) in the first and second components.  The color gradient represents the contribution of the specified nutrient to those indiviudals.  Lighter blue colors are indicative of a greater amount of the specified nutrient.
+
+
+```{r warning = F, echo = F, message = F}
+library(cowplot)
+
+Water <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$`Water_(g)`, title = "Water")
+
+Energy <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$Energ_Kcal, title = "Energy")
+
+Lipid <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Lipid_Tot_(g)', title = "Total Lipids")
+
+Protein <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Protein_(g)', title = "Protein")
+
+Magnesium <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Magnesium_(mg)', title = "Magnesium")
+
+Carbohydrates <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Carbohydrt_(g)', title = "Carbohydrates")
+
+Individual.plot <- plot_grid(Water, Energy, Lipid, Protein, Magnesium, Carbohydrates, align = 'h')
+
+title <- ggdraw() + 
+  draw_label(
+    "Individiual Plots",
+    x = 0,
+    hjust = 0, , fontfamily = "serif", size = 16
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, Individual.plot,
+  ncol = 1,
+  rel_heights = c(0.1, 1)
+)
+```
+ 
+There is clear clustering between foods that contain significant amounts of water and those that do not.  There is moderate evidence of clustering between foods that contain significant amounts of energy, lipids, and carbohydrates and those that do not.
+
+Another intersting observation comparing all six plots is that foods with higher amounts of water tend to have less of all other categories (energy, total lipids, protein, magnesium, and carbohydrates).  This is particularly noticeable when you compare the Water plot and the Carbohydrate plot.  
+
+Just to check if there are any major differences, we will also take a look at the individuals plot for principal components two and three:
+
+```{r warning = F, echo = F, message = F}
+library(cowplot)
+
+Water <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", col.ind = SRp$`Water_(g)`, title = "Water")
+
+Energy <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", col.ind = SRp$Energ_Kcal, title = "Energy")
+
+Lipid <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", col.ind = SRp$'Lipid_Tot_(g)', title = "Total Lipids")
+
+Protein <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", col.ind = SRp$'Protein_(g)', title = "Protein")
+
+Magnesium <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", col.ind = SRp$'Magnesium_(mg)', title = "Magnesium")
+
+Carbohydrates <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", col.ind = SRp$'Carbohydrt_(g)', title = "Carbohydrates")
+
+Individual.plot <- plot_grid(Water, Energy, Lipid, Protein, Magnesium, Carbohydrates, align = 'h')
+
+title <- ggdraw() + 
+  draw_label(
+    "Individiual Plots",
+    x = 0,
+    hjust = 0, , fontfamily = "serif", size = 16
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, Individual.plot,
+  ncol = 1,
+  rel_heights = c(0.1, 1)
+)
+```
+
+The pattern evident between the first two principal components is also evident between the second and third component.  There is a clear clustering between foods that contain significant amounts of water and those that do not and moderate evidence of clustering between foods that contain significant amounts of energy, lipids, and carbohydrates and those that do not.
+
+#### VARIABLES PLOT
+&nbsp;
+
+Now that I have identified the most prominent variables, we will examine a plot of the variables (nutrients) in the first and second components.  Rather than consider all 46 nutrients, I used the previously developed groups (Proximates, Vitamins, Minerals, Lipids, and Energy) to compare nutrients.
+ 
+```{r}
+fviz_pca_var(pr.out, labels = FALSE, habillage = new.contrib.cat$Categories)
+```
+
+It is clear that there is a fair amount of correlation between all of the nutrients but water.  It is the lone vector opposing the rest of the plot.  This reinforces what we observed in the individuals plots, where foods with higher amounts of water had less of all other nutrients.
+
+It appears that the vitamins are slightly clustered in the third quadrant, but for the most part the main nutrient groups seem to intermingle.
+
+### PLOTS AND TABLES
+
+Below is a summary of our initial data set:
+
+```{r echo = F}
+summary(SRp)
+```
+Figure 1
+
+### CONCLUSION
+
+It can be overwhelming when encountering a database such as the United States Department of Agriculture Food Composition Database with data on 8,789 food items and up to 150 food components. Principal Component Analysis enabled us to make unique observations that we might not be able to make otherwise.
+
+In order to narrow down the data, I settled on making observations based on the first six principal components.  The most prominet nutrients in these first six components were Water, Energy, Total Lipids, Protein, Magnesium, and Carbohydrates.  Taking a closer look at these nutrients, it was evident that foods with higher levels of water tended to have lower levels of other nutrients.
+
+
+### SOURCES
+
+1) US Department of Agriculture, Agricultural Research Service, Nutrient Data Laboratory.
+USDA National Nutrient Database for Standard Reference, Release 28 (Slightly revised).
+Version Current: May 2016. Internet: http://www.ars.usda.gov/ba/bhnrc/ndl 
+
+2) Holland, S. (2019). _Principal Components Analysis (PCA)_. Athens, GA.
+
+3) James, G et al. (2017). _An Introduction To Statistical Learning_. New York, NY.
+
+### APPENDIX
+
+R Code
+
+```{r warning = F, message = F, echo = T, eval = F}
+
+#Provided code to clean up the data
+
+SR = read.table("ABBREV.txt", header=F, row.names=1, sep="^", quote="~")
+SR = na.omit(SR) # remove rows with missing values
+SR = SR[row.names(SR) != "13352",] # remove "duplicate" entry
+row.names(SR) = SR[,1] # set more meaningful row names
+SR = SR[,-1]
+names(SR) = c("Water_(g)", "Energ_Kcal", "Protein_(g)", "Lipid_Tot_(g)", "Ash_(g)", 
+              "Carbohydrt_(g)", "Fiber_TD_(g)", "Sugar_Tot_(g)", "Calcium_(mg)", 
+              "Iron_(mg)", "Magnesium_(mg)", "Phosphorus_(mg)", "Potassium_(mg)", 
+              "Sodium_(mg)", "Zinc_(mg)", "Copper_(mg)", "Manganese_(mg)", 
+              "Selenium_(µg)", "Vit_C_(mg)", "Thiamin_(mg)", "Riboflavin_(mg)", 
+              "Niacin_(mg)", "Panto_Acid_(mg)", "Vit_B6_(mg)", "Folate_Tot_(µg)", 
+              "Folic_Acid_(µg)", "Food_Folate_(µg)", "Folate_DFE_(µg)", 
+              "Choline_Tot_(mg)", "Vit_B12_(µg)", "Vit_A_IU", "Vit_A_RAE", 
+              "Retinol_(µg)", "Alpha_Carot_(µg)", "Beta_Carot_(µg)", "Beta_Crypt_(µg)", 
+              "Lycopene_(µg)", "Lut+Zea_(µg)", "Vit_E_(mg)", "Vit_D_µg", "Vit_D_IU", 
+              "Vit_K_(µg)", "FA_Sat_(g)", "FA_Mono_(g)", "FA_Poly_(g)", "Cholestrl_(mg)", 
+              "GmWt_1", "GmWt_Desc1", "GmWt_2", "GmWt_Desc2", "Refuse_Pct")
+SRp = SR[,c(1:46)] # restrict to just the nutrient variables
+
+# Running the PCA
+
+pr.out <- prcomp(SRp, scale = T)
+
+#Scree Plot
+
+library(factoextra)
+fviz_eig(pr.out, ncp = 15, choice = c("variance", "eigenvalue"), addlabels = T)
+
+# Looking at the most prevalent nutrients in each component.
+
+library(cowplot)
+
+One <- fviz_contrib(pr.out, choice = "var", axes = 1, top = 10, title ="PC 1")
+
+Two <- fviz_contrib(pr.out, choice = "var", axes = 2, top = 10, title ="PC 2")
+
+Three <- fviz_contrib(pr.out, choice = "var", axes = 3, top = 10, title ="PC 3")
+
+Four <- fviz_contrib(pr.out, choice = "var", axes = 4, top = 10, title ="PC 4")
+
+Five <- fviz_contrib(pr.out, choice = "var", axes = 5, top = 10, title ="PC 5")
+
+Six <- fviz_contrib(pr.out, choice = "var", axes = 6, top = 10, title ="PC 6")
+
+Individual.plot <- plot_grid(One, Two, Three, Four, Five, Six, align = 'h')
+
+title <- ggdraw() + 
+  draw_label(
+    "Contribution of Variables to the First Six Principal Components",
+    x = 0,
+    hjust = 0, , fontfamily = "serif", size = 16
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, Individual.plot,
+  ncol = 1,
+  rel_heights = c(0.1, 1)
+)
+
+
+# Determing the most prevalent variables in the first six PCs
+library(reshape2)
+
+pr.var =pr.out$sdev^2
+pve=pr.var/sum(pr.var)
+pve.mat = matrix(rep(pve, each = 6), nrow=length(pve))
+
+contribution = apply(pr.out$rotation[,c(1:6)]^2 * pve.mat, 1, sum)
+new.contribution <- melt(contribution)
+
+# Creating the new categories
+
+Categories <- c(rep.int("Proximates", 1), rep.int("Energy", 1), rep.int("Proximates", 6), 
+                rep.int("Minerals", 10), rep.int("Vitamins", 24), rep.int("Lipids",4))
+new.contrib.cat <- data.frame(cbind(new.contribution, Categories))
+new.contrib.cat
+
+# Plotting the most prominent variables
+
+ggplot(data=new.contrib.cat, aes(fill=Categories)) +
+   geom_col(aes(x=reorder(rownames(new.contrib.cat), -value), y=value)) +
+   theme(axis.text.x = element_text(angle = 90)) +
+   labs(x="Nutrients", y="Variable Prominence") +
+   ggtitle("Most Prominent Nutrients in the First Six Principal Components")
+
+# Creating Biplot
+
+fviz_pca_biplot(pr.out, labels = FALSE)
+
+
+#Creating Individuals Plots
+
+library(cowplot)
+
+Water <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$`Water_(g)`, 
+                      title = "Water")
+
+Energy <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$Energ_Kcal, 
+                       title = "Energy")
+
+Lipid <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Lipid_Tot_(g)', 
+                      title = "Total Lipids")
+
+Protein <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Protein_(g)', 
+                        title = "Protein")
+
+Magnesium <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Magnesium_(mg)', 
+                          title = "Magnesium")
+
+Carbohydrates <- fviz_pca_ind(pr.out, label = "none", col.ind = SRp$'Carbohydrt_(g)', 
+                              title = "Carbohydrates")
+
+Individual.plot <- plot_grid(Water, Energy, Lipid, Protein, Magnesium, Carbohydrates, 
+                             align = 'h')
+
+title <- ggdraw() + 
+  draw_label(
+    "Individiual Plots- First and Second Component",
+    x = 0,
+    hjust = 0, , fontfamily = "serif", size = 16
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, Individual.plot,
+  ncol = 1,
+  rel_heights = c(0.1, 1)
+)
+
+#Creating Individuals Plots Looking at the Second and Third Component
+
+library(cowplot)
+
+Water <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", 
+                      col.ind = SRp$`Water_(g)`, title = "Water")
+
+Energy <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", 
+                       col.ind = SRp$Energ_Kcal, title = "Energy")
+
+Lipid <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", 
+                      col.ind = SRp$'Lipid_Tot_(g)', title = "Total Lipids")
+
+Protein <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", 
+                        col.ind = SRp$'Protein_(g)', title = "Protein")
+
+Magnesium <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", 
+                          col.ind = SRp$'Magnesium_(mg)', title = "Magnesium")
+
+Carbohydrates <- fviz_pca_ind(pr.out, axes = c(2, 3), label = "none", 
+                              col.ind = SRp$'Carbohydrt_(g)', title = "Carbohydrates")
+
+Individual.plot <- plot_grid(Water, Energy, Lipid, Protein, Magnesium, Carbohydrates, 
+                             align = 'h')
+
+title <- ggdraw() + 
+  draw_label(
+    "Individiual Plots- Second and Third Component",
+    x = 0,
+    hjust = 0, , fontfamily = "serif", size = 16
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, Individual.plot,
+  ncol = 1,
+  rel_heights = c(0.1, 1)
+)
+
+#Creating Variables Plot
+
+fviz_pca_var(pr.out, labels = FALSE, habillage = new.contrib.cat$Categories)
+
+#Examining the Summary of the Initial Data Set
+
+summary(SRp)
+```
+
