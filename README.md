@@ -1,2 +1,2 @@
 # Data_Mining
-Reports created for STAT 508: Data Mining
+A repository of reports exploring different techniques for data mining
