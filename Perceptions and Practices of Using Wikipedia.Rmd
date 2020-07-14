@@ -1,0 +1,1126 @@
+---
+title: University Faculty Perceptions and Practices of Using Wikipedia as a Teaching
+  Resource
+author: "Maureen Renaud"
+date: "7/7/2020"
+output:
+  html_document:
+    code_folding: hide 
+    toc: true
+    toc_float: true
+    toc_depth: 5
+    
+    
+---
+
+## INTRODUCTION
+
+  Using Wikipedia as an official source for academic research has typically been looked down upon, even by Wikipedia itself^4^.  However, that does not mean that there is no place for Wikipedia in the classroom.  Increasingly, students and instructors have found that it is an bountiful tertiary source of information.  This study aims to predict the "use behavior" of Wikipedia by university faculty, based on their responses to the survey questions as well as their demographic attributes.
+
+The data from this study comes from a study on factors influencing Wikipedia use (Meseguer, A.et al.,2015)^3^ and was analyzed with Principal Components Analysis (PCA), Logistic Regression, Linear Discriminant Analysis (LDA), Quadratric Discriminant Analysis (QDA), and K-Nearest Neighbors.
+
+Domain (area of study) and the first four principal components were statistically signfiant predictors and so each of these models were run with these five predictors.  
+
+According to _An Introduction to Statistical Learning_^2^, a logistic regression model is appropriate when the response variable falls into one of two categories.  For this data, the response is either "Yes" or "No" based on whether or not the instructor's response to the Use survey items indicated they supported the use of Wikipedia or did not support the use of Wikipedia in the classroom. Additionally, logistic regression results in a linear decision, so it is ideal for models where the predictors have weak or no correlations.  Because there are so many variables in this data set, many of them in the same category, there is a fair amount of correlation in this data set. Finally, a logistic regression model does not assume a normal disribution like Linear Discriminant Analysis does. 
+
+Linear Discriminant Analysis is an improvement upon Logistic Regression when the classes are well separated and if the distribution of predictors is approximately normal when _n_ is small.  In this case, n is quite large, so we do not have to be as concerned about whether the predictors are normally distributed or not.  However, several of the survey items do not have a normal distribution.
+
+Quadratic Discriminatn Analysis assumes that each class has its own covariance matrix.  This is in opposition to LDA, which assumes that all classes have the same covariance matrix.  This means that LDA is much less flexible with lower variance.  If the assumption that the classes share a common covariance matrix is correct, LDA may be a better predictor.  However, if the assumption is not met, then LDA will suffer from bias and will no longer be an ideal predictor.  In general, QDA is the recommended model if the data set is very large or if it is clear all classes do not share a covariance matrix.  
+
+K-Nearest Neighbors is non-parametric and is the best choice when the decision boundry is non-linear and when the assumptions of the other models cannot be met.  
+
+After running these four analyses, the model with K-Nearest Neighbors performed slightly better than the other models, though all four models performed similarly. 
+
+While all of the survey items contributed to the first four principal components in varying degrees, the top contributors were the three "Perceived Usefulness" items, the first "Perceived Ease of Use" item, and the first three "Quality" items.  Thus, respondents who rated these items highly were more likely to respond positively to the survey items regarding use of Wikipedia.  Additionally, respondents from the domains of Engineering and Science were more likely to resond poisitvely to the survey items regarding the use of Wikipedia in the classroom.
+
+
+## DATA
+
+The data for this study was obtained from the study _Factors that influence the teaching use of
+Wikipedia in Higher Education_^3^ (Meseguer, A et al).  It consists of 913 observations of 53 variables.  These variables include attribute information on the instructor completing the survey and their responses to the survey.  A break down of all variable is included below:
+
+### Variables {.tabset .tabset-fade .tabset-pills}
+
+#### Demographic Atributes
+
+
+Variable              | Description
+----------------------|--------------
+AGE                   | Age of Respondent
+GENDER                | 0=Male; 1=Female
+DOMAIN                | 1=Arts & Humanities; 2=Sciences; 3=Health Sciences; 4=Engineering & Architecture; 5=Law & Politics; 6=Social Sciences
+PhD                   | 0=No; 1=Yes
+YEARSEXP              | Years of University Teaching Experience
+UNIVERSITY            | 1=UOC; 2=UPF
+UOC_POSITION          | Academic Position of UOC members: 1=Professor; 2=Associate; 3=Assistant; 4=Lecturer; 5=Instructor; 6=Adjunct
+OTHER                 | Main Job in another university for part-time members: 1=Yes; 2=No
+OTHER_POSITION        | Work as part-time in another university and UPF members: 1=Professor; 2=Associate; 3=Assistant; 4=Lecturer; 5=Instructor; 6=Adjunct
+USERWIKI              | Wikipedia registered user: 0=No; 1=Yes
+
+
+#### Perceived Usefulness
+
+Variable              | Description
+----------------------|--------------
+PU1                   | The use of Wikipedia makes it easier for students to develop new skills
+PU2                   | The use of Wikipedia improves students' learning
+PU3                   | Wikipedia is useful for teaching
+                    
+#### Perceived Ease of Use
+
+Variable              | Description
+----------------------|---------
+PEU1                  | Wikipedia is user-friendly
+PEU2                  | It is easy to find in Wikipedia the information you seek
+PEU3                  | It is easy to add or edit information in Wikipedia
+          
+#### Perceived Enjoyment
+
+Variable              | Description
+----------------------|---------
+ENJ1                  | The use of Wikipedia stimulates curiosity
+ENJ2                  | The use of Wikipedia is entertaining
+
+#### Quality
+
+Variable              | Description
+----------------------|----------
+QU1                   | Articles in Wikipedia are reliable
+QU2                   | Articles in Wikipedia are updated
+QU3                   | Articles in Wikipedia are comprehensive
+QU4                   | In my area of expertise, Wikipedia has a lower quality than other educational resources
+QU5                   | I trust in the editing system of Wikipedia
+
+#### Visibility
+
+Variable              | Description
+----------------------|----------
+VIS1                  | Wikipedia improves visibility of students' work
+VIS2                  | It is easy to have a record of the contributions made in Wikipedia
+VIS3                  | I cite Wikipedia in my academic papers
+                     
+#### Social Image                     
+
+Variable              | Description
+----------------------|-----------
+IM1                   | The use of Wikipedia is well considered among colleagues
+IM2                   | In academia, sharing open educational resources is appreciated
+IM3                   | My colleagues use Wikipedia
+                      
+#### Sharing Attitude
+
+Variable              | Description
+----------------------|----------
+SA1                   | It is important to share academic content in open platforms
+SA2                   | It is important to publish research results in other media than academic journals or books
+SA3                   | It is important that students become familiar with online collaborative environments
+                      
+#### Use Behavior
+
+Variable              | Description
+----------------------|-----------
+USE1                  | I use Wikipedia to develop my teaching materials
+USE2                  | I use Wikipedia as a platform to develop educational activities with students
+USE3                  | I recommend my students to use Wikipedia
+USE4                  | I recommend my colleagues to use Wikipedia
+USE5                  | I agree my students use Wikipedia in my courses
+                    
+#### Profile 2.0
+
+Variable              | Description
+----------------------|------------
+PF1                   | I contribute to blogs
+PF2                   | I actively participate in social networks
+PF3                   | I publish academic content in open platforms
+                      
+#### Job Relevance
+
+Variable              | Description
+----------------------|------------
+JR1                   | My university promotes the use of open collaborative environments in the Internet
+JR2                   | My university considers the use of open collaborative environments in the Internet as a teaching merit
+                      
+#### Behavioral Intention
+
+Variable              | Description
+----------------------|--------------
+BI1                   | In the future I will recommend the use of Wikipedia to my colleagues and students
+BI2                   | In the future I will use Wikipedia in my teaching activity
+                     
+#### Incentives
+
+Variable              | Description
+----------------------|----------------
+INC1                  | To design educational activities using Wikipedia, it would be helpful: a best practices guide
+INC2                  | To design educational activities using Wikipedia, it would be helpful: getting instruction from a colleague
+INC3                  | To design educational activities using Wikipedia, it would be helpful: getting specific training
+INC4                  | To design educational activities using Wikipedia, it would be helpfull: greater institutional recognition
+                      
+#### Experience
+
+Variable              | Description
+----------------------|---------------
+EXP1                  | I consult Wikipedia for issues related to my field of expertise
+EXP2                  | I consult Wikipedia for other academic related issues
+EXP3                  | I consult Wikipedia for personal issues
+EXP4                  | I contribute to Wikipedia (editions, revisions, articles improvement...)
+EXP5                  |I use wikis to work with my students
+
+
+
+```{r}
+#Loading the data
+wiki = read.csv(
+  "wiki4HE.csv", header=T, sep=";", na.strings="?"
+  )
+
+#Removing variables
+wiki.remove.other <- wiki[,-c(7,8,9)]
+```
+
+### Data Cleaning
+
+Two of the vartiables, OTHER and OTHER_POSITION are only answered if the faculty member works another part of full-time position.  Because they contribute a signficant amount of missing data to this set, I will remove them.
+There were a fair amount of missing values in UOC_Position, as it was only applicable if the member was from the Universitat Oberta de Catalunya, so I chose to eliminate it as well.
+
+There are five variables under the category "Use".  I did not feel comfortable selecting just one of the variables as the response, so I decided to create a composite variable summarizing the responses to these five questions.  I felt all five questions could potentially reflect an educators willingness to use Wikipedia in the classroom. To create this composite, I first average the scores of the all five Use variables across each row.  Then I reassigned all means greater than three to "Yes", as in "Yes, the instructor supported the use of wikipedia".  I assigned all means with values less than three to "No", as in "No, the teacher did not support the use of Wikipedia."  I eliminated all averages equal to three.  I chose to eliminate these responses because under the Likert scale, a 3 is a neutral value.  There is no way to predict whether the individual answering the question feels slightly more positive, slightly more negative, or truly netural about the question.
+
+After removing the remaining missing data, I am left with a data set containing 558 observations and 51 variables (including the newly created Use.Ave variable.
+
+```{r message = F, warning = F}
+
+#Removing Nas
+
+wiki.clean <- na.omit(
+  wiki.remove.other
+  )
+
+#Changing variables to factors
+ 
+wiki.clean$GENDER <- as.factor(
+  wiki.clean$GENDER
+  )
+wiki.clean$DOMAIN <- as.factor(
+  wiki.clean$DOMAIN
+  )
+wiki.clean$PhD <- as.factor(
+  wiki.clean$PhD
+  )
+
+```
+
+```{r}
+
+#Take the row means for the five use variables in the training set
+wiki.clean$Use.Ave <- rowMeans(
+  wiki.clean[,30:34]
+  )
+
+#Assign all values > 3 to "Yes"
+wiki.clean$Use.Ave[which(wiki.clean$Use.Ave > 3)] <- "Yes"
+
+#Assign all values < 3 to "No"
+wiki.clean$Use.Ave[which(wiki.clean$Use.Ave < 3)] <- "No"
+
+#Assign all values = 3 to "NA"
+wiki.clean$Use.Ave[which(wiki.clean$Use.Ave == 3)] <- NA
+
+#Eliminate NAs
+wiki.clean <- na.omit(
+  wiki.clean
+  )
+
+#Transform the column of means into a factor
+wiki.clean$Use.Ave <- as.factor(wiki.clean$Use.Ave)
+
+```
+
+### Analysis of Survey Items {.tabset .tabset-fade .tabset-pills}
+
+A boxplot of each survey item, broken up into survey categories is provided below.  In addition to providing information about the median and range of each survey items, these boxplots indicate that many of the survey items are not normally distributed.
+
+#### Perceived Usefulness
+```{r}
+boxplot(
+  wiki.clean[,8:10]
+  )
+title(
+  "Perceived Usefulness", adj = 0
+  )
+```
+
+#### Perceived Ease of Use
+
+```{r}
+boxplot(
+  wiki.clean[,11:13]
+  )
+title(
+  "Perceived Ease of Use", adj = 0
+  )
+```
+
+#### Perceived Enjoyment
+
+```{r}
+boxplot(
+  wiki.clean[,14:15]
+  )
+title(
+  "Perceived Enjoyment", adj = 0
+  )
+```
+
+#### Quality
+
+```{r}
+boxplot(
+  wiki.clean[,16:20]
+  )
+title(
+  "Quality", adj = 0
+  )
+```
+
+#### Visibility
+
+```{r}
+boxplot(
+  wiki.clean[,21:23]
+  )
+title(
+  "Visibility", adj = 0
+  )
+```
+
+#### Social Image
+
+```{r}
+boxplot(
+  wiki.clean[,24:26]
+  )
+title(
+  "Social Image", adj = 0
+  )
+```
+
+#### Sharing Attitude
+
+```{r}
+boxplot(
+  wiki.clean[,27:29]
+  )
+title(
+  "Sharing Attitude", adj = 0
+  )
+```
+
+#### Use Behavior
+
+```{r}
+boxplot(
+  wiki.clean[,30:34]
+  )
+title(
+  "Use Behavior", adj = 0
+  )
+```
+
+#### Profile 2.0
+
+```{r}
+boxplot(
+  wiki.clean[,35:37]
+  )
+title(
+  "Profile 2.0", adj = 0
+  )
+```
+
+#### Job Relevance
+
+```{r}
+boxplot(
+  wiki.clean[,38:39]
+  )
+title(
+  "Job Relevance", adj = 0
+  )
+```
+
+#### Behavioral Intention
+
+```{r}
+boxplot(
+  wiki.clean[,40:41]
+  )
+title(
+  "Behavioral Intention", adj = 0
+  )
+```
+
+#### Incentives
+
+```{r}
+boxplot(
+  wiki.clean[,42:45]
+  )
+title(
+  "Incentives", adj = 0
+  )
+```
+
+#### Experience
+
+```{r}
+boxplot(
+  wiki.clean[,46:50]
+  )
+title(
+  "Experience", adj = 0
+  )
+```
+
+
+
+### Correlations
+
+The plot below on the left shows the correlation between all numerical variables in the data set.  By moving the cursor around the plot will show you the two variables selected and their correlation.  Many variables have little to no correlation but there are some strong correlations, particularly between survey items in the same category.
+
+```{r, warning = F, message = F}
+library(qtlcharts)
+data(wiki.clean[c(1,5:50)])
+
+#Creating the Correlation Matrix
+
+iplotCorr(
+  wiki.clean[c(1,5:50)], 
+          scatterplots = F, 
+          chartOpts=list(height=800, width=1600, 
+          cortitle = "Correlation Matrix"
+          )
+  )
+```
+
+### Principal Component Analysis (PCA)
+
+In order to further explore down the data, the next step is to use Principal Component Analysis (PCA) for dimension reduction among all the ordinal survey items, excluding the five use behavior variables, as they will serve as the response variables.  The Likert scale, which is ordinal, is treated as continuous to run this analysis.  This isn't a perfect situation because assessing them as continuous assumes that there is a standard "distance" between a score of 1 and 2 or 2 and 3, etc.  In truth, there is no way to assess how far a 1 is from a 2 or any other value.  
+
+However, the Likert scale does have the option to choose between strongly agree and agree and strongly disagree and disagree so you are able to differentiate somewhat between those with strong positive or negative feelings and those with lesser positive or negative feelings.  
+
+Because we are not using true continuous data and because we already see that there are some non-normal distributions among the survey items, a model that relies on such assumptions may not be appropriate.  Ultimately, the non-parametric K-Nearest Neighbors model may be the ideal model to predict Use behavior on.
+
+Before I run the PCA, I will first break my data into test and training data sets and run PCA on the training set.  The data was broken up use the 'splitstackshape' package, which allows for breaking up data taking into consideration the make-up of various variables.  This data was broken up taking into consideration University and Domain.  
+
+This is because in the original data set, there were 800 responses from Universitat Oberta de Catalunya (UOC) and only 113 from Universitat Pompeu Fabra (UPF).
+
+Looking at the domains^3^ (MMeseguer et al.), 20.8% of the respondents came from Arts and Humanities, 5.3% came from Science, 7.0% came from Health Sciences), 15.4% came from Engineering and Architecture, 11.8% came from Law, and 39.6% came from Social Sciences.
+
+```{r message = F, warning = F}
+
+library(splitstackshape)
+set.seed(10)
+
+strat.output <- stratified(
+  wiki.clean, 
+  c('UNIVERSITY', 'DOMAIN'), 
+  0.66, 
+  bothSets = T
+  )
+
+wiki.clean.Train <- strat.output$SAMP1
+
+wiki.clean.Test <- strat.output$SAMP2
+```
+
+```{r}
+pr.out <- prcomp(
+  wiki.clean.Train[,c(8:29, 35:50)], 
+  scale =TRUE
+  )
+```
+
+The scree plot will help us determine how many principal components to initially analyze:
+
+```{r warning = F, message = F}
+library(factoextra)
+fviz_eig(
+  pr.out, ncp = 15, 
+  choice = c("variance", "eigenvalue"), 
+  addlabels = T
+  )
+```
+
+In this plot you can see that the the first component explains more than 28% of the variance and subsequent components explains significantly less.  In order to determine how many of these components we should consider, there are a few schools of thought.
+
+First, we could look for the "elbow" in the plot.  In this plot you can see a significant elbow after the first component, which explains more than 28%.  However, I'd like to consider more than just one component.  
+
+We could consider any component that explains more than it's "fair" share of the variance, fair being defined as more than 1/p of the variance, according to the Tutorial _Principal Components Analysis (PCA)_^1^. In this case, 1/p = 1/38 = .0263.  So, we would consider the first 9 components.
+
+
+#### Analysis of Top Components {.tabset .tabset-fade .tabset-pills}
+
+The plots below show the top contributors to each of the first nine principal components.  While these certainly are interesting, they only tell a partial piece of the story, since ultimately we will consider multiple principal components.
+
+##### PC1
+```{r warning = F, message = F}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 1, 
+  top = 10, 
+  title ="PC 1"
+  )
+```
+
+##### PC2
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 2, 
+  top = 10, 
+  title ="PC 2"
+  )
+```
+
+##### PC3
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 3, 
+  top = 10, 
+  title ="PC 3"
+  )
+```
+
+##### PC4
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 4, 
+  top = 10, 
+  title ="PC 4"
+  )
+```
+
+##### PC5
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 5, 
+  top = 10, 
+  title ="PC 5"
+  )
+```
+
+##### PC6
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 6, 
+  top = 10, 
+  title ="PC 6"
+  )
+```
+
+##### PC7
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 7, 
+  top = 10, 
+  title ="PC 7"
+  )
+```
+
+##### PC8
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 8, 
+  top = 10, 
+  title ="PC 8"
+  )
+```
+
+##### PC9
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 9, 
+  top = 10, 
+  title ="PC 9"
+  )
+```
+
+
+
+
+#### Overall Top Contributors
+
+In order to rectify the problem of only focusing on one component at a time, we look to the text _An Introduction to Statistical Learning_^2^, which notes that the first principal component of a set of features is the normalized linear combination of the features.  Normalized means that the sum of the squared loadings is equal to one.
+
+
+Squaring the loading of each element in a given component gives its relative contribution to that component.  If we multiply that contribution by the proportion of variance explained by each component, we will be able to calculate which survey items have the greatest impact over multiple components.
+
+The below table is based on this method.  Additonally, I added a new column indicating which category the survey item was from to help with the visualizations later in this study.  
+
+
+```{r message = F, warning = F}
+library(reshape2)
+
+pr.var <- pr.out$sdev^2
+
+pve <- pr.var/sum(pr.var)
+
+pve.mat <- matrix(
+  rep(
+    pve, 
+    each = 9
+    ), 
+  nrow =length(pve)
+  )
+
+contribution <- apply(
+  pr.out$rotation[,c(1:9)]^2 * pve.mat, 1, sum
+  )
+
+new.contribution <- melt(contribution)
+
+Categories <- c(
+  rep.int("Perceived_Usefulness", 3), 
+  rep.int("Perceived_Ease_of_Use", 3), 
+  rep.int("Perceived_Enjoyment", 2), 
+  rep.int("Quality", 5), 
+  rep.int("Visability", 3), 
+  rep.int("Social_Image",3),
+  rep.int("Sharing_Attitude",3),
+  rep.int("Profile_2.0",3),
+  rep.int("Job_Relevance",2),
+  rep.int("Behavioral_Intention",2),
+  rep.int("Incentives",4),
+  rep.int("Experience",5)
+  )
+
+new.contrib.cat <- data.frame(
+  cbind(
+    new.contribution, Categories
+    )
+  )
+```
+
+We can now reorder and plot these items to get an idea of which ones have the greatest contribution to the first nine principal components.
+
+```{r}
+ggplot(
+  data = new.contrib.cat, aes(fill=Categories)) +
+   geom_col(
+     aes
+     (
+       x = reorder(
+         rownames(
+           new.contrib.cat
+           ),
+         -value
+         ), 
+       y=value
+       )
+     ) +
+   theme(
+     axis.text.x = element_text
+     (angle = 90
+       )
+     ) +
+   labs(
+     x="Survey Items", 
+     y="Variable Prominence"
+     ) +
+   ggtitle(
+     "Most Prominent Survey Items in the First Nine Principal Components"
+     )
+```
+
+The plot is also color coded based on the category of the survey item.
+
+The top four survey items include all from the Perceived Usefulness Survey items.  Other significant contriutors include one of the Quality survey items and those from the Perceived Ease of Use and Perceived Enjoyment categories.
+
+
+#### Individuals {.tabset .tabset-fade .tabset-pills}
+
+Now that I have identified the most prominent variables, we will examine plots of the individuals (survey responses) in the first component.  The color gradient represents the contribution of the specified items to those indiviudals.  Lighter blue colors are indicative of higher scores for the specified survey item.  It appears the responses with the highest degree of the most prominent variables are clustered in the same general area.
+
+
+##### Perceived Usefulness Item #3
+```{r warning = F, message = F}
+
+fviz_pca_ind(
+  pr.out, label = "none", col.ind = wiki.clean.Train$`PU3`, title = "PU3"
+  )
+```
+
+##### Perceived Usefulness Item #2
+
+```{r}
+fviz_pca_ind(
+  pr.out, label = "none", col.ind = wiki.clean.Train$'PU2', title = "PU2"
+  )
+```
+
+##### Quality Item #1
+
+```{r}
+fviz_pca_ind(
+  pr.out, label = "none", col.ind = wiki.clean.Train$'Qu1', title = "Qu1"
+  )
+```
+
+##### Perceived Usefulness Item #1
+
+```{r}
+fviz_pca_ind(
+  pr.out, label = "none", col.ind = wiki.clean.Train$'PU1', title = "PU1"
+  )
+```
+
+##### Perceived Enjoyment Item #2
+
+```{r}
+
+fviz_pca_ind(
+  pr.out, label = "none", col.ind = wiki.clean.Train$'ENJ2', title = "ENJ2"
+  )
+```
+
+##### Perceived Enjoyment Item #1
+
+```{r}
+fviz_pca_ind(
+  pr.out, label = "none", col.ind = wiki.clean.Train$'ENJ1', title = "ENJ1"
+  )
+```
+
+
+
+#### Variables
+
+
+Now, we wil examine the variables:
+
+```{r}
+fviz_pca_var(pr.out, habillage = new.contrib.cat$Categories)
+```
+
+
+All of the survey items are clustered together with the exception of Qu4.  Qu4 if answered based on whether the respondent thinks that Wikipedia is of lower quality than other resources.  
+
+So, it is the only item where a high score is more reflective of a negative outlook on Wikipedia. This is important to keep in mind when analyzing these numbers.
+
+Additionally, it appears that the survey items we have tentatively associated with higher use of Wikipedia (Perceived Usefulness, Quality, and Perceived Ease of Use) are clustered in the fourth quadrant.
+
+
+## ANALYSES
+
+
+Knowing the make-up of the principal components, we can now move on to predicting use based on the principal components and attributes.
+
+Before moving on, I will bind the scores from the first 9 principal components to the data set, so that I can use them for the various statistical model.
+
+```{r}
+
+#Create the Principal Components for the Test set
+wiki.clean.test.trans <- data.frame(predict(pr.out, wiki.clean.Test))
+
+#Add the first 8 principal components to the train set
+wiki.clean.train.final <- cbind(wiki.clean.Train, pr.out$x[,1:10])
+
+#Add the first 8 principal components to the test set
+wiki.clean.test.final <- cbind(wiki.clean.Test, wiki.clean.test.trans[,1:10])
+```
+
+### Selecting Predictors {.tabset .tabset-fade .tabset-pills}
+
+Now that my data is properly set up, I will examine which variables are statistically significant.  I began with a full model containing all demographic attributes and the first nine principal components.
+
+Interestingly enough, it appears that domain and principal component scores one through four and eight were statistically significant predictors of use.  I set up a new model with these components and include principal components one through four but not eight, because I did not want to include PC8 without including PCs 5-7.
+
+
+#### Full Model
+
+
+```{r}
+glm.fits = glm(Use.Ave ~ AGE + GENDER + DOMAIN + PhD + YEARSEXP + UNIVERSITY + USERWIKI + 
+                 PC1 + PC2 + PC3 + PC4 + PC5+ PC6 + PC7 + PC8 + PC9,
+data = wiki.clean.train.final, family = binomial)
+summary(glm.fits)
+```
+
+
+#### Reduced Model
+
+```{r}
+glm.fits.3 = glm(Use.Ave ~ DOMAIN + PC1 + PC2 + PC3 + PC4,
+data = wiki.clean.train.final, family = binomial)
+summary(glm.fits.3)
+```
+
+### Model Assessment {.tabset .tabset-fade .tabset-pills}
+
+I can now assess the various models.
+
+#### Logistic Regression
+
+Rerunning the models with the predictors specified above gives the following output:
+
+
+```{r warning = F, message = F}
+library(caret)
+glm.probs = predict(glm.fits.3, wiki.clean.test.final, type = "response")
+```
+
+```{r}
+glm.pred=rep("No", 189)
+glm.pred[glm.probs >.5]= "Yes"
+
+confusionMatrix(as.factor(glm.pred), as.factor(wiki.clean.test.final$Use.Ave), positive = "Yes")
+```
+
+This logistic regression model has a sensitivity rate of 70.18%%.  Meaning that it accurately predicted the faculty members that would have a positive attitude toward using Wikipedia 70.18% of the time.  The model's specificity, or ability to accurately predict those who would have a negative attitude toward Wikipedia, was 92.42%.  The overall accuracy of the model was 85.71%.
+
+
+#### Linear Discriminant Analysis
+
+We now assess this data using a linear discriminant analysis.
+
+```{r warning = F, message = F}
+library(MASS)
+lda.fit = lda(Use.Ave ~ DOMAIN + PC1 + PC2 + PC3 + PC4,
+    data = wiki.clean.train.final)
+lda.fit
+```
+
+```{r}
+lda.pred = predict(lda.fit, wiki.clean.test.final)
+lda.class = lda.pred$class
+```
+
+```{r}
+confusionMatrix(as.factor(lda.class), as.factor(wiki.clean.test.final$Use.Ave), positive = "Yes")
+```
+
+This model performed similarly to the logistic regression model.  It had a slightly lower sensitivity at 68.42%, specificity of 90.15%, and accuracy at 83.6%.
+
+#### Quadratic Discriminant Analysis
+
+```{r}
+qda.fit = qda(Use.Ave ~ DOMAIN + PC1 + PC2 + PC3 + PC4,
+    data = wiki.clean.train.final)
+qda.fit
+```
+
+The confusion matrix for the test set:
+
+```{r}
+qda.class = predict(qda.fit, wiki.clean.test.final)$class
+confusionMatrix(as.factor(qda.class), as.factor(wiki.clean.test.final$Use.Ave), positive = "Yes")
+```
+
+This model performed worse than either of the linear models, though it did have a higher sensitivity at 73.68%.  However, specificity at 78.03% and overall accuracy at 76.72% were lower.
+
+#### K-Nearest Neighbors
+
+Before running the K-Nearest Neighbors Analysis, it is important to select an appropriate K-level, so first I will compare the accuracy levels for the first 20 k-values.
+
+```{r}
+library(class)
+train.X = as.matrix(wiki.clean.train.final[,c(2,52,53,54,55)])
+test.X = as.matrix(wiki.clean.test.final[,c(2,52,53,54,55)])
+train.Use.Ave = wiki.clean.train.final$Use.Ave
+```
+
+
+```{r}
+accuracy <- vector()
+for (i in 1:20) {
+    set.seed(123)
+    knn.pred = knn(train.X, test.X, train.Use.Ave, k = i)
+    knn.confusion <- confusionMatrix(as.factor(knn.pred), as.factor(wiki.clean.test.final$Use.Ave), positive = "Yes")
+    accuracies <- knn.confusion$overall['Accuracy']
+    accuracy[i] <- accuracies
+    
+}
+
+ 
+k <- c(1:20)
+accuracy.data <- as.data.frame(cbind(k, accuracy))
+accuracy.plot <- ggplot(data = accuracy.data, aes(x = k, y = accuracy)) + 
+   geom_bar(stat = "identity") +
+   geom_col(aes(fill = k == which.max(accuracy))) +
+   labs(x = 'K', y = 'Accuracy', title = 'Accuracy For Each K-Value') +
+   scale_x_continuous(breaks = 1:20) +
+   scale_fill_discrete(name="Maximum Accuracy")
+
+accuracy.plot
+```
+
+Based on this plot k = 7 is a slightly better predictor than the other k-values.
+
+```{r}
+set.seed(16)
+knn.pred.2 = knn(train.X, test.X, train.Use.Ave, k = 7)
+
+knn.confusion.2 <- confusionMatrix(as.factor(knn.pred.2), as.factor(wiki.clean.test.final$Use.Ave), positive = "Yes")
+knn.confusion.2
+```
+
+This models does slightly better than the linear models with a sensitivity of 70.18%, a specificity of 93.18%, and an overall accuracy of 86.24%
+
+### Comparisons
+
+The below chart summarizes key data points from the models:
+
+Model               | Sensitivity | Specificity | Accuracy | 95% CI
+--------------------|-------------|-------------|----------|--------
+Logistic Regression | .7018       | .9242       | .8571    | (.7990, .9037)
+LDA                 | .6842       | .9015       | .8360    | (.7753, .8858)
+QDA                 | .7368       | .7803       | .7672    | (.7004, .8255)
+K-Nearest Neighbors | .7018       | .9318       | .8624    | (.8050,. 9081)
+
+It's interesting that all models had better specificity than sensitivity.  This means that all of the models did a better job of predicting those with negative "use behavior" than of predicting those with positive "use behavior".
+
+While we can compare these methods based on their overall accuracy, the confidence intervals for all four methods overlap, meaning we don't truly know beyond a doubt if a given model is better than another.
+
+Overall, K-Nearest Neighbors was the best performing model.  KNN is a non-parametric method that performs best when the assumptions underlying the other models are not met.  KNN likely performed best in this case because we had such a large and nebulous data set.  We had some variables (such as the survey items) that were similar but then the attributes were very different.
+
+Additionally, earlier we covered the risks of treating the Likert scale as a continuous variable.  If not all assumptions are met, such as those of normal distribution and equal variance, then it is best to use a non-parametric test on the data.  It is clear, based on the box plots of the survey items, that not all items have a normal distribution.  This may have affected these models and so, K-Nearest Neighbors may be the best model choice, not just because it is the most accurate, but also because it is a non-parametric model.
+
+The next best performing model was Logistic Regression.  Logistic Regression models perform best when data is weakly correlated or not correlated.  While many of the variables were uncorrelated (or weakly correlated), many were correlated.  This was especially true of those variables in the same survey catefoires.
+
+Linear Discriminant Analysis had the next best performance.  LDA models perform best when the data is normally distributed.  Judging by the box plots of each survey item, not all of the survey items were normally distributed. However, because _n_ is so big, the model was still able to perform relatively well compared to the other models.
+
+The worst performing model was Quadratic Discriminant Analysis.  QDA models perform best when each class has its own covariance model.  Because many of these variables were closely related, it may be unrealistic to assume they have their own covariance matrix.  The linear models, which assume a common covariance matrix, performed better than the QDA model.
+
+Now, we take a closer look at the variables that contribute to these models:
+
+
+### Contributing Variables
+
+#### Domain
+
+Domain was a statistically significant contributor to these models in part because there is a significant difference in how Wikipedia is acceptable in different eduction fields summarized in the table below.  The below table summarized how many respondents from each field responded positively to using Wikipedia in the classroom, how many responded negatively to using Wikipedia in the classroom and the overall percent that responded positively to using Wikipedia in the classroom.  This table is derived from the whole data set:
+
+. | Domain                    | Positive | Negative | Percent
+--|---------------------------|----------|----------|---------
+1 | Arts & Humanities         | 36       | 67       | 34.95%
+2 | Sciences                  | 13       | 19       | 40.63%
+3 | Health Sciences           | 10       | 37       | 21.28%
+4 | Engineering & Architecture| 37       | 47       | 44.05%
+5 | Law &  Politics           | 4        | 53       | 07.02%
+6 | Social Sciences           | 56       | 179      | 23.83%
+
+This table shows a pretty wide range of Wikipedia acceptance ranging from only 7% of faculty in the field of Law and Politics all the way up to 44% in the field of Engineering & Architecture.  To be honest, some of these surprised me.  I was expecting to see more acceptance of Wikipedia in the "softer" fields and less acceptance in the STEM fields, but the two fields most accepting of Wikipedia appear to be Engineering and the Sciences.
+
+#### First Four Principal Components {.tabset .tabset-fade .tabset-pills}
+
+Principal Components: Now that we know that the first four principal components are significant predictors of attitude toward Wikipedia, lets take a closer look at them.  
+
+It's interesting that in PC1, the top two contributors are the "Behavioral Intention" items.  It is logical that positive scores on these items would be associated with higher Wikipedia use.  However, when combining the top four components together, they are no longer at the top of the list.  This seems to indicate that when taking a comprehensive view of the situation, belief that Wikipedia is a useful, quality resource is more important than intent to use it in the future.
+
+##### PC1
+```{r warning = F,message = F}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 1, 
+  top = 10, 
+  title ="PC 1"
+  )
+```
+
+##### PC2
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 2, 
+  top = 10, 
+  title ="PC 2"
+  )
+```
+
+##### PC3
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 3, 
+  top = 10, 
+  title ="PC 3"
+  )
+```
+
+##### PC4
+
+```{r}
+fviz_contrib(
+  pr.out, 
+  choice = "var", 
+  axes = 4, 
+  top = 10, 
+  title ="PC 4"
+  )
+```
+
+
+#### Overall Look at Principal Components
+
+To get a more complete picture of which survey items contribute the most to these components, below is an aggregate based on each survey items contribution to the top 4 principal components that we included in these models.
+
+```{r}
+pr.var <- pr.out$sdev^2
+
+pve <- pr.var/sum(pr.var)
+
+pve.mat <- matrix(
+  rep(
+    pve, 
+    each = 4
+    ), 
+  nrow =length(pve)
+  )
+
+contribution <- apply(
+  pr.out$rotation[,c(1:4)]^2 * pve.mat, 1, sum
+  )
+
+new.contribution <- melt(contribution)
+
+Categories <- c(
+  rep.int("Perceived_Usefulness", 3), 
+  rep.int("Perceived_Ease_of_Use", 3), 
+  rep.int("Perceived_Enjoyment", 2), 
+  rep.int("Quality", 5), 
+  rep.int("Visability", 3), 
+  rep.int("Social_Image",3),
+  rep.int("Sharing_Attitude",3),
+  rep.int("Profile_2.0",3),
+  rep.int("Job_Relevance",2),
+  rep.int("Behavioral_Intention",2),
+  rep.int("Incentives",4),
+  rep.int("Experience",5)
+  )
+
+new.contrib.cat <- data.frame(
+  cbind(
+    new.contribution, Categories
+    )
+  )
+
+
+pve.mat.2 <- matrix(
+  rep(
+    pve, 
+    each = 4
+    ), 
+  nrow =length(pve)
+  )
+
+contribution.2 <- apply(
+  pr.out$rotation[,c(1:4)]^2 * pve.mat.2, 1, sum
+  )
+
+new.contribution.2 <- melt(contribution.2)
+
+Categories <- c(
+  rep.int("Perceived_Usefulness", 3), 
+  rep.int("Perceived_Ease_of_Use", 3), 
+  rep.int("Perceived_Enjoyment", 2), 
+  rep.int("Quality", 5), 
+  rep.int("Visability", 3), 
+  rep.int("Social_Image",3),
+  rep.int("Sharing_Attitude",3),
+  rep.int("Profile_2.0",3),
+  rep.int("Job_Relevance",2),
+  rep.int("Behavioral_Intention",2),
+  rep.int("Incentives",4),
+  rep.int("Experience",5)
+  )
+
+new.contrib.cat.2 <- data.frame(
+  cbind(
+    new.contribution.2, Categories
+    )
+  )
+
+#Plotting the top contributors
+ggplot(
+  data = new.contrib.cat.2, aes(fill=Categories)) +
+   geom_col(
+     aes
+     (
+       x = reorder(
+         rownames(
+           new.contrib.cat
+           ),
+         -value
+         ), 
+       y=value
+       )
+     ) +
+   theme(
+     axis.text.x = element_text
+     (angle = 90
+       )
+     ) +
+   labs(
+     x="Survey Items", 
+     y="Variable Prominence"
+     ) +
+   ggtitle(
+     "Most Prominent Survey Items in the First Four Principal Components"
+     )
+```
+
+The "Perceived Usefulness" survey items absolutely dominate in their contribution followed by a "Perceived Ease of Use" survey item and the top three "Quality" survey items.  These are logical contributors.  If an educator feels like Wikipedia is a useful and quality resource, then it is natural that there are going to support it's use in the classroom.  
+
+An interesting note I would like to point out is the appearance of Qu4 as the second to last contributor to these principal components.  Qu4 was the lone "opposite" survey item, where a high score indicated that the respondent thought Wikipedia was lower quality than other sources.
+
+
+## CONCLUSION
+
+After comparing the results of four models: Logistic Regression, Linear Discriminant Analysis, Quadratic Discriminant Analysis, and K-Nearest Neighbors, K-Nearest Neighbors was the most accurate model.  This is logical because this is a non-parametric model well-suited to this data set, especially given that we chose to use the Likert Scale as a continuous variable in the data set.
+
+Comparing the survey items, it is clear that the Domain of the respondent and the first four Principal Components are significant predictors of "Use Behavior" among University faculty.
+
+Additionally, A faculty member in Science or Engineering is more likely to support the use of Wikipedia than one from the Law Department.
+
+Finally, respondents who answered positively to survey items regarding the "Perceived Usefulness", "Quality" and "Perceived Ease of Use" of Wikipedia were more likely to support the use of Wikipedia in the classroom.
+
+
+## SOURCES
+
+1) Holland, S. (2019). _Principal Components Analysis (PCA)_. Athens, GA.
+
+2) James, G et al. (2017). _An Introduction To Statistical Learning_. New York, NY.
+
+3) Meseguer, A., Aibar, E., Llados, J., Minguillan, J., Lerga, M. (2015). _Factors that influence the teaching use of Wikipedia in Higher Education_. JASIST, Journal of the Association for Information Science and Technology. ISSN: 2330-1635. doi: 10.1002/asi.23488.
+
+4) Wikipedia. https://en.wikipedia.org/wiki/Wikipedia:Academic_use. 11 July 2020.
+
