@@ -1,0 +1,134 @@
+---
+title: "Support Vector Machines"
+author: "Maureen Renaud"
+date: "7/15/2020"
+output: html_document
+    code_folding: hide 
+    toc: true
+    toc_float: true
+    toc_depth: 5
+---
+## INTRODUCTION
+
+Orange juice sales in the United States have fallen nearly every year since 1998.  This has occured for a variety of reasons, including the rising cost of growing oranges, changes in the ways Americans eat breakfast, and growing concern for the amount of sugar often hidden in juices.  In order to combat these challenges, it is up to market analysts to fully understand the purchasing trends in order to understand why, when, and where Americans buy orange juice.  This study employs Support Vector Machines to better understand the OJ dataset from the ISLR library.
+
+The OJ dataset contains sales information for the Citrus Hill and Minute Maid brands of orange juice.
+
+I found....
+
+
+## DATA
+
+The data for this study contained from the OJ dataset in the ISLR library which contains 1070 observations on the 18 variables related to sales information for the Citrus Hill and Minute Maid brands of orange juice.  These variables are described below:
+
+
+```{r warning = F}
+RNGkind(sample.kind="Rounding")
+library(ISLR)
+
+summary(OJ)
+```
+
+```{r message}
+library(qtlcharts)
+data(OJ)
+#Creating the Correlation Matrix
+
+iplotCorr(OJ[,-c(1,14)], 
+          scatterplots = T,
+          chartOpts=list(cortitle = "Correlation Matrix"
+          )
+  )
+```
+
+```{r}
+freq(OJ)
+  plot_num(OJ)
+  describe(OJ)
+```
+
+## ANALYSES
+
+### Support Vector Classifier
+
+Now that we have an idea about the data, we can move on to the analysis.  First, I created a training set containing a random sample of 800 observations, and a test set containing the remaining observations. 
+
+```{r}
+set.seed(1)
+
+#Selecting a random sample of 800 rows from the 1070
+my.sample <- sample(1:nrow(OJ), 800)
+
+#Assiging those 800 selected rows to the training set
+train <- OJ[my.sample,]
+
+#Assigning the remaining rows to the test set
+test <- OJ[-my.sample,]
+```
+
+### Support Vector Classifier
+
+Now I will Fit a support vector classifier to the training data using cost=0.01, with Purchase as the response and the other variables as predictors. 
+
+```{r}
+library(e1071)
+
+#Fitting the Support Vector Classifier
+support.fit <- svm(
+  Purchase ~ ., 
+  data= train, 
+  kernel = "linear", 
+  cost = .01, 
+  )
+
+summary(support.fit)
+```
+
+According to the output, there are 432 support vectors, 215 in one class and 217 in the other class.
+
+I will now assess the error rates of the training and test data:
+
+```{r message = F, warning = F}
+library(caret)
+
+#Comparing model predictions to the training data
+train.pred = predict(support.fit, train)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train$Purchase,train.pred)
+```
+
+```{r}
+### Support Vector Classifier
+#Comparing model predictions to the training data
+test.pred = predict(support.fit, test)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test$Purchase,test.pred)
+```
+
+
+Now, I will select an optima cost from values ranging from 0.01 to 10.
+
+```{r}
+tune.out=tune(svm, Purchase ~ .,data = train ,kernel = "linear",
+ranges =list(cost=c(0.01, .05, 0.1, 1, 2, 5, 10)))
+
+summary(tune.out)
+```
+What are the training and test error rates?
+
+
+```
+
+
+
+
+## TABLES AND PLOTS
+
+
+## CONCLUSION
+
+## SOURCES
+
+1) Ferdman, R. (2014). _How American Fell Out of Love With Orange Juince_ Quartz. https://qz.com/176096/how-america-fell-out-of-love-with-orange-juice/
