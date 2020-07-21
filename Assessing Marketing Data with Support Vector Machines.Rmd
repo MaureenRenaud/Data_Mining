@@ -2,7 +2,8 @@
 title: "Support Vector Machines"
 author: "Maureen Renaud"
 date: "7/15/2020"
-output: html_document
+output:
+  html_document:
     code_folding: hide 
     toc: true
     toc_float: true
@@ -10,51 +11,115 @@ output: html_document
 ---
 ## INTRODUCTION
 
-Orange juice sales in the United States have fallen nearly every year since 1998.  This has occured for a variety of reasons, including the rising cost of growing oranges, changes in the ways Americans eat breakfast, and growing concern for the amount of sugar often hidden in juices.  In order to combat these challenges, it is up to market analysts to fully understand the purchasing trends in order to understand why, when, and where Americans buy orange juice.  This study employs Support Vector Machines to better understand the OJ dataset from the ISLR library.
+Orange juice sales in the United States have fallen nearly every year since 1998 (Ferdman, 2014)^1^.  This has occured for a variety of reasons, including the rising cost of growing oranges, changes in the ways Americans eat breakfast, and growing concern for the amount of sugar often hidden in juices.  In order to combat these challenges, it is up to market analysts to fully understand the purchasing trends in order to understand why, when, and where Americans buy orange juice.  This study employs Support Vector Machines to predict which brand of orange juice a customer will purchase based on data from the OJ dataset contained in the ISLR library.  This data set contains a variety of sales information for the Citrus Hill and Minute Maid brands of orange juice.
 
-The OJ dataset contains sales information for the Citrus Hill and Minute Maid brands of orange juice.
+This study examined the data using a Support Vector Factor, a Support Vector Machine with radial kernel, and a Support Vector Machine with a polynomial kernel.  After using cross-validation to select the optimal cost, each model was evaluated using a test set of data. 
 
-I found....
+According to _An Introduction to Statistical Learning_^2^, the Support Vector Classifier is an ideal classifier when you have two groups that can't be completely separated by a hyperplane.  It allows some observations to be on the "incorrect" side of the margin or hyperplane in order to better classify the remaining observations.
+This classifier still requires a linear division, it just allows allowances for some data to be misclassified when compared to the Maximal Margin Classifier.
+
+Cost (C) is the tuning parameter that dictates how many observations are allowed to be misclassified.  When cost is small, we end up with narrow margins and fewer violations.  This means that the classifier is fit to the data which results in low bias and high variance.  When cost is larger, the margin is wider and violations can occur more frequently. This means the classifier is not as fit to the data, so it is more biased but has lower variance.
+
+The benefit to using a model like this on our dataset is that it allows some observations to be misclassified.  With such an expansive dataset, it is unlikely we would find a plane to perfectly separate the observations.  However, the downside to this model is that it requires a linear division.  With such a complicated data set, it may be difficult to find a linear division.
+
+Like Support Vector Classifier, the Support Vector Machine allows some observations to be incorrectly classified in order to develop a better overall classification.  Unlike the Support Vector Classifier, it is appropriate to use when the boundaries are non-linear.  This may alleviate potential issues from trying to use a Support Vector Classifier.  In order to use a Support Vector Machine, we have our choice of different kernels.  There is no rule to determine the ideal kernel, so we will experiment with both the radial kernel and then the polynomial kernel in order to determine which proides the best result.
+
+After running the assessments, all of the models performed similarly, though both Support Vector Machine classifiers performed better than the Support Vector Classifier, indicating that it likely was difficult to linearly divide the data.  The Support Vector Machine using a polynomial kernel outperformed the classifier using a radial kernel.
+
+Additionally, I assessed the performance of these classifiers on both the full data set and a reduced data set selected by performing a logistic regression.  The classifiers did not perform as well at predicting the correct Orange Juice purchased when using the reduced data set.  I found this interesting because I thought a simpler model, with reduced multicollinearity might result in a more effective model.  This was not the case.  It turns out that multicollinearity is not as big of a concern when using Support Vector Machines as it is when doing a regression.  Part of this is due to the fact that classifier is based on inner product of the predictors.  It is also beceause we are only trying to predict which class the response variable will fall into.  We are not trying to interpret the model.  Multicollinearity does not effect the predictive ability of a model.  It seems in this case that having more variables, even if they are highly correlated, increases the predictive ability of the classifier.
+
+With this information in hand, a market analyst would now have a clear picture of which customer purchasing habits lead to the selection of each brand of orange juice.  By focusing on these habits, the analyst could determine where to focus marketing efforts in order to gain customers.
 
 
 ## DATA
 
 The data for this study contained from the OJ dataset in the ISLR library which contains 1070 observations on the 18 variables related to sales information for the Citrus Hill and Minute Maid brands of orange juice.  These variables are described below:
 
-
 ```{r warning = F}
 RNGkind(sample.kind="Rounding")
 library(ISLR)
-
-summary(OJ)
 ```
 
-```{r message}
-library(qtlcharts)
-data(OJ)
-#Creating the Correlation Matrix
+Variable      | Description
+--------------|-------------
+Purchase      | A factor with levels CH and MM indicating whether the customer purchased Citrus Hill or Minute Maid Orange Juice
+WeekofPurchase| Week of purchase
+StoreID       | Store ID
+PriceCH       | Price charged for CH
+PriceMM       | Price charged for MM
+DiscCH        | Discount offered for CH
+DiscMM        | Discount offered for MM
+SpecialCH     | Indicator of special on CH
+SpecialMM     | Indicator of special on MM
+LoyalCH       | Customer brand loyalty for CH
+SalePriceMM   | Sale price for MM
+SalePriceCH   | Sale price for CH
+PriceDiff     | Sale price of MM less sale price of CH
+Store7        | A factor with levels No and Yes indicating whether the sale is at Store 7
+PctDiscMM     | Percentage discount for MM
+PctDiscCH     | Percentage discount for CH
+ListPriceDiff | List price of MM less list price of CH
+STORE         | Which of 5 possible stores the sale occured at
 
-iplotCorr(OJ[,-c(1,14)], 
-          scatterplots = T,
-          chartOpts=list(cortitle = "Correlation Matrix"
-          )
-  )
-```
+### VARIABLE SELECTION {.tabset .tabset-fade .tabset-pills}
+
+The first thing I want to do is to try and pare down the variables.  I'll do this by determing which variables are statistically significant and by assessing the correlations between variables in order to avoid mulitcollinearity.
+
+After examining the full model, I see that five of the variables could not be defined due to singularities.  This occurs when there is a high degree of multi-collinearity, meaning these effects of these variables are perfectly predicted by other variables.  For example, STORE contains the exact same information provided by StoreID, except Store 7 is coded as 0 instead of 7.  
+
+I will also eliminate SpecialCH and SpecialMM because they are only coded if there is a SalePriceMM or SalePriceCH.
+I will eliminate PctDiscMM and PctDiscMM because this information is already provided in DiscCH and DiscMM.
+
+Looking at the output for the reduced model, I will further narrow it down to eliminate the factors that are not significant.  Those variables that are not significant are WeekofPurchase, StoreID, and Store7.
+
+#### FULL MODEL
 
 ```{r}
-freq(OJ)
-  plot_num(OJ)
-  describe(OJ)
+glm.fits=glm(Purchase ~ .,
+data= OJ, family = binomial)
+summary(glm.fits)
 ```
+
+#### REDUCED MODEL
+
+```{r}
+glm.fits.2=glm(Purchase ~ WeekofPurchase +StoreID + PriceCH + PriceMM + DiscCH +DiscMM + 
+               LoyalCH + Store7,
+data= OJ, family = binomial)
+summary(glm.fits.2)
+```
+
+#### FINAL REDUCED MODEL
+
+```{r}
+glm.fits.3 = glm(Purchase ~ PriceCH + PriceMM + DiscCH +DiscMM + LoyalCH,
+data= OJ, family = binomial)
+summary(glm.fits.3)
+```
+
+### PAIR CHART
+
+I will now look at a pair chart of my remaining variables.  It is clear that we have successfully eliminated a lot of the multicollinearity that previously existed in this data set.
+
+```{r warning = F, message = F}
+OJ.update <- OJ[,c(1, 4, 5, 6, 7, 10)]
+library(ggplot2)
+library(GGally)
+ggpairs(OJ.update, title = "Generalized Pairs Plot of the Reduced OJ Data Set")
+
+```
+
 
 ## ANALYSES
 
-### Support Vector Classifier
+I will now classify the data using the Support Vector Classifier, Support vector Machine with radial kernel, and Support Vector Machine with polynomial kernel.  I will classify both the full model with all variables and the final reduced model to see if there is a difference in performance and the ability of the classifier to accurately determine the class of the response variable.
 
-Now that we have an idea about the data, we can move on to the analysis.  First, I created a training set containing a random sample of 800 observations, and a test set containing the remaining observations. 
+### SUPPORT VECTOR CLASSIFIER
+
+Now that we have an idea about the data, we can move on to the analyses.  Prior to beginning, I have created a training set containing a random sample of 800 observations, and a test set containing the remaining observations. 
 
 ```{r}
-set.seed(1)
+set.seed(15)
 
 #Selecting a random sample of 800 rows from the 1070
 my.sample <- sample(1:nrow(OJ), 800)
@@ -64,13 +129,30 @@ train <- OJ[my.sample,]
 
 #Assigning the remaining rows to the test set
 test <- OJ[-my.sample,]
+
+set.seed(15)
+
+#Selecting a random sample of 800 rows from the 1070
+my.sample <- sample(1:nrow(OJ), 800)
+
+#Assiging those 800 selected rows to the training set
+train.update <- OJ.update[my.sample,]
+
+#Assigning the remaining rows to the test set
+test.update <- OJ.update[-my.sample,]
 ```
 
-### Support Vector Classifier
+#### SUPPORT VECTOR CLASSIFIER WITH A COST OF 0.01
 
-Now I will Fit a support vector classifier to the training data using cost=0.01, with Purchase as the response and the other variables as predictors. 
+##### COMPARING DATA SETS {.tabset .tabset-fade .tabset-pills}
 
-```{r}
+First, we apply the Support Vector Classifier to the full training data using a cost of 0.01.  According to the output, there are 426 support vectors evenly divided, with 213 in one class and 213 in the other class. 
+Applying the Support Vetor Classifier to the reduced training data gives us a classifier with 446 support vectors, 224 for one class and 222 for the other.
+
+
+###### FULL DATA SET
+
+```{r message = F, warning = F}
 library(e1071)
 
 #Fitting the Support Vector Classifier
@@ -81,12 +163,33 @@ support.fit <- svm(
   cost = .01, 
   )
 
+#Producing a summary of the classifier
 summary(support.fit)
 ```
 
-According to the output, there are 432 support vectors, 215 in one class and 217 in the other class.
+###### REDUCED DATA SET
 
-I will now assess the error rates of the training and test data:
+```{r message = F, warning = F}
+#Fitting the Support Vector Classifier
+support.fit.update <- svm(
+  Purchase ~ ., 
+  data= train.update, 
+  kernel = "linear", 
+  cost = .01, 
+  )
+
+#Producing a summary of the classifier
+summary(support.fit.update)
+```
+
+
+##### COMPARING ERROR RATES WITH A COST OF 0.01 {.tabset .tabset-fade .tabset-pills}
+
+In order to assess how well this classifier fits the data, I will examine the error rates of both the training set and the test set for the full and reduced data sets. The accuracy for each is provided in the output below.  
+
+The classifier based on the full dataset performed very slightly better than the classifier based on the reduced dataset with an error rate of 0.20 on the test set compared to an error rate of 0.2037.  As expected, error rates increased when using the classifiers on the test set compared to their performance on the training set.
+
+###### TRAINING SET ERROR FULL MODEL
 
 ```{r message = F, warning = F}
 library(caret)
@@ -98,6 +201,9 @@ train.pred = predict(support.fit, train)
 confusionMatrix(train$Purchase,train.pred)
 ```
 
+
+###### TEST SET ERROR FULL MODEL
+
 ```{r}
 ### Support Vector Classifier
 #Comparing model predictions to the training data
@@ -107,28 +213,543 @@ test.pred = predict(support.fit, test)
 confusionMatrix(test$Purchase,test.pred)
 ```
 
+###### TRAINING SET ERROR REDUCED MODEL
 
-Now, I will select an optima cost from values ranging from 0.01 to 10.
+```{r message = F, warning = F}
+library(caret)
+
+#Comparing model predictions to the training data
+train.pred.update = predict(support.fit.update, train.update)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train.update$Purchase,train.pred.update)
+```
+
+
+
+###### TEST SET ERROR REDUCED MODEL
 
 ```{r}
+### Support Vector Classifier
+#Comparing model predictions to the training data
+test.pred.update = predict(support.fit.update, test.update)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test.update$Purchase,test.pred.update)
+```
+
+#### FINDING THE OPTIMAL COST {.tabset .tabset-fade .tabset-pills}
+
+By adjusting the cost, it may be possible to increase the accuracy of the classifier.  I will assess the accuracy of various costs ranging from .01 to 10 on the training data.
+
+The optimal cost for the classifer on the full model is approximately 3.16 while the optimal cost for the classifier on the reduced model is approximately 0.562.
+
+##### FULL MODEL
+
+```{r}
+set.seed(15)
 tune.out=tune(svm, Purchase ~ .,data = train ,kernel = "linear",
-ranges =list(cost=c(0.01, .05, 0.1, 1, 2, 5, 10)))
+ranges =list(cost = 10^seq(-2, 1, by = 0.25)))
 
 summary(tune.out)
 ```
-What are the training and test error rates?
+
+
+##### REDUCED MODEL
+
+```{r}
+set.seed(15)
+tune.out.update=tune(svm, Purchase ~ .,data = train.update ,kernel = "linear",
+ranges =list(cost = 10^seq(-2, 1, by = 0.25)))
+
+summary(tune.out.update)
+```
+
+
+#### SUPPORT VECTOR CLASSIFIER WITH OPTIMAL COST {.tabset .tabset-fade .tabset-pills}
+
+We can now analyze the Support Vector Classifier with optimal costs.  For the full model, there are 313 support vectors, 156 in one class and 157 in another class.  For the reduced model, there are 323 support vectors with 162 in one class and 161 in another class.
+
+##### SUPPORT VECTOR CLASSIFIER FROM FULL MODEL
+
+```{r}
+bestmod = tune.out$best.model
+summary(bestmod)
+```
+
+##### SUPPORT VECTOR CLASSIFIER FROM REDUCED MODEL
+
+```{r}
+bestmod.update = tune.out.update$best.model
+summary(bestmod.update)
+```
+
+
+#### COMPARING ERROR RATES WITH OPTIMAL COST {.tabset .tabset-fade .tabset-pills}
+
+And we can assess the accuracy of the classifier on the training data and test data.  
+
+Interestingly enough, using an "optimum" cost resulted in a higher error rate for the full model on the test data when compared to using a cost of 0.01 for the classifier.  
+Additionally, using the classifer with the reduced data set on the test data had a lower error rate then using the classifier with the full data set.
+
+##### TRAINING SET ERROR FULL MODEL
+
+
+```{r}
+#Comparing model predictions to the training data
+train.pred = predict(bestmod, train)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train$Purchase,train.pred)
+```
+
+##### TEST SET ERROR FULL MODEL
+
+```{r}
+#Comparing model predictions to the training data
+test.pred = predict(bestmod, test)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test$Purchase,test.pred)
+```
+
+##### TRAINING SET ERROR REDUCED MODEL
+
+```{r}
+#Comparing model predictions to the training data
+train.pred.update = predict(bestmod.update, train.update)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train.update$Purchase,train.pred.update)
+```
+
+##### TEST SET ERROR REDUCED MODEL
+
+```{r}
+#Comparing model predictions to the training data
+test.pred.update = predict(bestmod.update, test.update)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test.update$Purchase,test.pred.update)
+```
+
+
+### SUPPORT VECTOR MACHINE WITH RADIAL KERNEL
+
+Below, we use the Support Vector Machine with a radial kernel and the default value for gamma.
+
+#### SUPPORT VECTOR MACHINE WITH RADIAL KERNEL OF COST OF 0.01 {.tabset .tabset-fade .tabset-pills}
+
+According to the output, there are 644 support vectors with 324 in one class and 320 in the other when the Support Vector Machine is used on the full data set.  When it is used on the reduced data set, there are 641 support vectors with 321 in one class and 320 in another class.
+
+
+##### FULL MODEL
+
+```{r}
+svmfit.radial <- svm(Purchase ~ ., data = train, kernel = "radial", cost = .01)
+summary(svmfit.radial)
+```
+
+##### REDUCED MODEL
+
+```{r}
+svmfit.radial.update <- svm(Purchase ~ ., data = train.update, kernel = "radial", cost = .01)
+summary(svmfit.radial.update)
+```
+
+
+#### COMPARING ERROR RATES {.tabset .tabset-fade .tabset-pills}
+
+We can now assess the error rate when using this classifier on the training and test sets.
+
+The classifier does quite poorly on the training set with only a 60 percent accuracy rate and 40% error rate for both the full and reduced data sets..  Interestingly enough, both actually do slightly better on the test set.
+
+##### TRAINING SET ERROR FULL MODEL
+
+```{r message = F, warning = F}
+library(caret)
+
+#Comparing model predictions to the training data
+train.pred.radial = predict(svmfit.radial, train)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train$Purchase,train.pred.radial)
+```
+
+##### TEST SET ERROR FULL MODEL
+
+```{r}
+### Support Vector Classifier
+#Comparing model predictions to the training data
+test.pred.radial = predict(svmfit.radial, test)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test$Purchase,test.pred.radial)
+```
+
+##### TRAINING SET ERROR REDUCED MODEL
+
+```{r message = F, warning = F}
+library(caret)
+
+#Comparing model predictions to the training data
+train.pred.update.radial = predict(svmfit.radial.update, train.update)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train.update$Purchase,train.pred.update.radial)
+```
+
+##### TEST SET ERROR REDUCED MODEL
+
+```{r}
+### Support Vector Classifier
+#Comparing model predictions to the training data
+test.pred.update.radial = predict(svmfit.radial.update, test.update)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test.update$Purchase,test.pred.update.radial)
+```
+
+#### FINDING THE OPTIMAL COST {.tabset .tabset-fade .tabset-pills}
+
+We know their is the potential for the Support Vector Machine to perform better if we optimize the cost, which we do below.  I will assess the accuracy of various costs ranging from .01 to 10 on the training data.  The optimal cost for the Support Vector Machine used on the full model is 0.178 and the optimal cost for the Support Vector Machine used on the reduced data set is 0.316.
+
+##### FULL MODEL
+
+```{r}
+set.seed(15)
+tune.out.rad = tune(svm, Purchase ~ ., data = train, kernel = "radial", 
+                    ranges = list(cost = 10^seq(-2, 1, by = 0.25)))
+
+summary(tune.out.rad)
+
+```
+
+
+##### REDUCED MODEL
+
+```{r}
+set.seed(15)
+tune.out.update.rad = tune(svm, Purchase ~ ., data = train.update, kernel = "radial", 
+                    ranges = list(cost = 10^seq(-2, 1, by = 0.25)))
+
+summary(tune.out.update.rad)
+```
+
+#### SUPPORT VECTOR MACHINE WITH RADIAL KERNEL AND OPTIMAL COST {.tabset .tabset-fade .tabset-pills}
+
+This new Support Vector Machine used on the full data set has 473 support vectors, 237 for one class and 236 for the other class.  The Support Vector Machine used on the reduced data set has 378 support vectors with 191 for one class and 187 for another class. 
+
+##### FULL MODEL
+
+```{r}
+bestmod.rad = tune.out.rad$best.model
+summary(bestmod.rad)
+```
+
+##### REDUCED MODEL
+
+```{r}
+bestmod.update.rad = tune.out.update.rad$best.model
+summary(bestmod.update.rad)
+```
+
+#### COMPARING ERROR RATES {.tabset .tabset-fade .tabset-pills}
+
+I can now assess performance on the training and test sets.  The error rates across the board were much lower using the Optimal Cost.  This time, the classifier used on the full data set outperformed the classifier using on the reduced data set when looking at performance on the test data.
+
+
+##### TRAINING SET ERROR FULL MODEL
+
+```{r}
+#Comparing model predictions to the training data
+train.pred.rad.best = predict(bestmod.rad, train)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train$Purchase,train.pred.rad.best)
+```
+
+##### TEST SET ERROR FULL MODEL
+
+```{r}
+#Comparing model predictions to the training data
+test.pred.rad.best = predict(bestmod.rad, test)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test$Purchase,test.pred.rad.best)
+```
+
+
+##### TRAINING SET ERROR REDUCED MODEL
+
+```{r}
+#Comparing model predictions to the training data
+train.pred.update.rad.best = predict(bestmod.update.rad, train.update)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train.update$Purchase,train.pred.update.rad.best)
+```
+
+##### TEST SET ERROR REDUCED MODEL
+
+```{r}
+#Comparing model predictions to the training data
+test.pred.update.rad.best = predict(bestmod.update.rad, test.update)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test.update$Purchase,test.pred.update.rad.best)
+```
+
+### SUPPORT VECTOR MACHINE WITH POLYNOMIAL KERNEL
+
+As we mentioned above there is no rule to determine the ideal kernel.  We examined the radial kernel above, so now we will examine the polynomial kernel with a degree of two.
+
+
+#### SUPPORT VECTOR MACHINE WITH POLYNOMIAL KERNEL AND COST OF 0.01 {.tabset .tabset-fade .tabset-pills}
+
+The Support Vector Machine has 643 support vectors, 323 in one class and 320 in the other class when used on both the full and reduced data sets.
+
+##### FULL MODEL
+
+```{r}
+svmfit.poly <- svm(Purchase ~ ., data = train, kernel = "polynomial", cost = .01, degree = 2)
+summary(svmfit.poly)
+```
+
+
+##### REDUCED MODEL
+
+
+```{r}
+svmfit.update.poly <- svm(Purchase ~ ., data = train.update, kernel = "polynomial", cost = .01, degree = 2)
+summary(svmfit.update.poly)
+```
+
+#### COMPARING ERROR RATES {.tabset .tabset-fade .tabset-pills}
+
+As we saw when evaluating the Support Vector Machine with radial kernel, the Support Vector Machine with polynomial kernel also did quite poorly acrsso the poor on both the training and test sets and with both the full and reduced data sets.
+
+##### TRAINING SET ERROR FULL MODEL
+
+
+```{r message = F, warning = F}
+library(caret)
+
+#Comparing model predictions to the training data
+train.pred.poly = predict(svmfit.poly, train)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train$Purchase,train.pred.poly)
+```
+
+##### TEST SET ERROR FULL MODEL
+
+```{r}
+ 
+#Comparing model predictions to the training data
+test.pred.poly = predict(svmfit.poly, test)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test$Purchase,test.pred.poly)
+```
+
+##### TRAINING SET ERROR REDUCED MODEL
+
+```{r message = F, warning = F}
+library(caret) 
+
+#Comparing model predictions to the training data
+train.update.pred.poly = predict(svmfit.update.poly, train.update)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train.update$Purchase,train.update.pred.poly)
+```
+
+##### TEST SET ERROR REDUCED MODEL
+
+```{r}
+ 
+#Comparing model predictions to the training data
+test.update.pred.poly = predict(svmfit.update.poly, test.update)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test.update$Purchase,test.update.pred.poly)
+```
+
+
+#### FINDING THE OPTIMAL COST {.tabset .tabset-fade .tabset-pills}
+
+We know their is the potential for the Support Vector Machine to perform better if we optimize the cost, which we do below.  I will assess the accuracy of various costs ranging from .01 to 10 on the training data.  The optimal cost for the Support Vector Machine is ten for both the SVM used on the full data set and the SVM used on the reduced data set.
+
+##### FULL MODEL
+
+```{r}
+set.seed(15)
+tune.out.poly = tune(svm, Purchase ~ ., data = train, degree = 2, kernel = "polynomial", 
+                    ranges = list(cost = 10^seq(-2, 1, by = 0.25)))
+
+summary(tune.out.poly)
+
+```
+
+
+##### REDUCED MODEL
+
+```{r}
+set.seed(15)
+tune.out.update.poly = tune(svm, Purchase ~ ., data = train.update, degree = 2, kernel = "polynomial", 
+                    ranges = list(cost = 10^seq(-2, 1, by = 0.25)))
+
+summary(tune.out.update.poly)
+
+```
+
+#### SUPPORT VECTOR MACHINE WITH POLYNOMIAL KERNEL AND OPTIMAL COST {.tabset .tabset-fade .tabset-pills}
+
+Using the optimal cost the SVM for the full data set has 337 support vectors with 171 in one class and 166 in the other.  The SVM for the reduced data set has 519 support vectors with 261 in one class and 258 in the other.
+
+##### FULL MODEL
+
+```{r}
+bestmod.poly = tune.out.poly$best.model
+summary(bestmod.poly)
+```
+
+##### REDUCED MODEL
+
+```{r}
+bestmod.update.poly = tune.out.update.poly$best.model
+summary(bestmod.update.poly)
+```
+
+#### COMPARING ERROR RATES {.tabset .tabset-fade .tabset-pills}
+
+Like we saw with the SVM with a radial kernel, using the optimal cost greatly improved the performance of the classifier on both the training and test data.  On the test data, the classifier used on the full data set performed better than the classifier used on the reduced data set, with an error rate of 0.1815 compared to an error rate of 0.2593.
+The error rate of 0.1815 is the lowest error rate of any classifier used in this study.
+
+##### TRAINING SET ERROR FULL MODEL
+
+```{r}
+#Comparing model predictions to the training data
+train.pred.poly.best = predict(bestmod.poly, train)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train$Purchase,train.pred.poly.best)
+```
+
+##### TEST SET ERROR FULL MODEL
+
+```{r}
+#Comparing model predictions to the training data
+test.pred.poly.best = predict(bestmod.poly, test)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test$Purchase,test.pred.poly.best)
+```
+
+##### TRAINING SET ERROR REDUCED MODEL
+
+```{r}
+#Comparing model predictions to the training data
+train.pred.update.poly.best = predict(bestmod.update.poly, train.update)
+
+#Creating the Confusion Matrix for the training error
+confusionMatrix(train.update$Purchase,train.pred.update.poly.best)
+```
+
+##### TEST SET ERROR REDUCED MODEL
+
+```{r}
+#Comparing model predictions to the training data
+test.pred.update.poly.best = predict(bestmod.update.poly, test.update)
+
+#Creating the Confusion Matrix for the test error rate
+confusionMatrix(test.update$Purchase,test.pred.update.poly.best)
+```
+
+### COMPARISONS
+
+All error rates are provided in the table below for easier comparison.
+
++-------------------------+-----------------+---------------+---------------+---------------+
+|Classifier               |Training Error   | Test Error    |Training Error |Test Error     |
+|                         |(Cost = 0.01)    | (Cost = 0.01) |(Optimal Cost) |(Optimal Cost) |
++=========================+=================+===============+===============+===============+
+|Vector Support Classifier| 0.16            | 0.20          | 0.1462        | 0.2111        |
+|Full Model               |                 |               |               |               |
++-------------------------+-----------------+---------------+---------------+---------------+
+|Vector Support Classifier| 0.1638          | 0.2037        | 0.1575        | 0.2037        |
+|Reduced Model            |                 |               |               |               |
++-------------------------+-----------------+---------------+---------------+---------------+
+|Vector Support Machine   | 0.40            | 0.3593        | 0.1588        | 0.1889        |
+|with Radial Kernel       |                 |               |               |               |
+|Full Model               |                 |               |               |               |
++-------------------------+-----------------+---------------+---------------+---------------+
+| Vector Support Machine  | 0.40            | 0.3593        | 0.1512        | 0.2148        |
+|with Radial Kernel       |                 |               |               |               |
+|Reduced Model            |                 |               |               |               |
++-------------------------+-----------------+---------------+---------------+---------------+
+|Vector Support Machine   | 0.3762          |0.3481         | 0.1488        |0.1815         |                     
+|with Polynomial Kernel   |                 |               |               |               |
++-------------------------+-----------------+---------------+---------------+---------------+
+|Vector Support Machine   | 0.3862          | 0.3556        | 0.2712        | 0.2593        |     
+|with Polynomial Kernel   |                 |               |               |               |
+|Reduced Model            |                 |               |               |               |
++-------------------------+-----------------+---------------+---------------+---------------+
+
+The plots compare the Receiver Operator Characteristic(ROC) curves for each classifier run on the full data set.  The plot on the left shows classifier performance with a cost of 0.01 and the plot on the right shows classifier performance with the optimal cost.  While there is a bit of variation between the classifiers when using a cost of 0.01, there is very little difference when using the optimal cost.  However, you can see that the Vector Support Machine with polynomial kernel just edges out the other two classifiers in terms of predictive ability.
+
+```{r message = F, warning = F}
+library(ROCR)
+rocplot = function(pred, truth, ...){
+predob = prediction(pred, truth, label.ordering = c("MM", "CH"))
+perf = performance(predob, "tpr", "fpr")
+plot(perf,...)
+}
+
+
+fitted.linear = attributes(predict(support.fit, OJ[-my.sample, ], decision.values =TRUE))$decision.values
+fitted.radial = attributes(predict(svmfit.radial, OJ[-my.sample, ], decision.values =TRUE))$decision.values
+fitted.poly = attributes(predict(svmfit.poly, OJ[-my.sample, ], decision.values =TRUE))$decision.values
+
+ 
+par(mfrow =c(1,2))
+rocplot(fitted.linear, OJ[-my.sample, "Purchase"], col = "red", main = "Test Set with .01 Cost")
+rocplot(fitted.radial, OJ[-my.sample, "Purchase"], add = T, col = "blue", main = "Test Set with .01 Cost")
+rocplot(fitted.poly, OJ[-my.sample, "Purchase"], add = T, col = "green", main = "Test Set with .01 Cost")
+
+legend("right", c("Linear", "Radial", "Polynomial"), lty=1, 
+    col = c("red", "blue", "green"), bty="n", inset=c(0,-0.15))
+
+fitted.linear.opt = attributes(predict(tune.out$best.model, OJ[-my.sample, ], decision.values =TRUE))$decision.values
+fitted.radial.opt = attributes(predict(tune.out.rad$best.model, OJ[-my.sample, ], decision.values =TRUE))$decision.values
+fitted.poly.opt = attributes(predict(tune.out.poly$best.model, OJ[-my.sample, ], decision.values =TRUE))$decision.values
+
+ 
+
+rocplot(fitted.linear.opt, OJ[-my.sample, "Purchase"], add = F, col = "red", main = "Test Set with Optimal Cost")
+rocplot(fitted.radial.opt, OJ[-my.sample, "Purchase"], add = T, col = "blue", main = "Test Set with Optimal Cost")
+rocplot(fitted.poly.opt, OJ[-my.sample, "Purchase"], add = T, col = "green", main = "Test Set with Optimal Cost")
+
+legend("right", c("Linear", "Radial", "Polynomial"), lty=1, 
+    col = c("red", "blue", "green"), bty="n", inset=c(0,-0.15))
 
 
 ```
 
 
+## CONCLUSION AND RECOMMENDATIONS
 
+After running the assessments, all of the models performed similarly, though both Support Vector Machine classifiers performed better than the Support Vector Classifier, indicating that it likely was difficult to linearly divide the data.  The Support Vector Machine using a polynomial kernel outperformed the classifier using a radial kernel.
 
-## TABLES AND PLOTS
+Using the complete data set, rather than a reduced model designed to eliminate multicollinearity, performed better as well.  
 
+Based on all available data, I would not advise the market analyst to reduce the data set to avoid multicollinearity. Multicollinearity is not as big of an issue when using Support Vector Machines, due to their reliance on the inner product and the fact that the classifier is used to predict assignment to a class and not to infer further information about the relationships.
 
-## CONCLUSION
+While the Support Vector Machine with a polynomial kernel did perform better than the other classifiers on the test set, there was not a significant difference in performance.  In fact, using different seeds for randomization resulted in different responses.  While there is reason to believe that the Support Vector Machine may perform better than the Support Vector Classifier due to the difficulty in finding a way to linearly separate such a complex data set, there is not significant difference between using the radial or polynomial kernel.  For this particular data set, the market analyst can be equally confident with the performance of either of the Support Vector Machine classifiers.
 
 ## SOURCES
 
 1) Ferdman, R. (2014). _How American Fell Out of Love With Orange Juince_ Quartz. https://qz.com/176096/how-america-fell-out-of-love-with-orange-juice/
+
+2) James, G et al. (2017). _An Introduction To Statistical Learning_. New York, NY.  
