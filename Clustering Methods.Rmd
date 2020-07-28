@@ -1,0 +1,615 @@
+---
+title: "Clustering Methods"
+author: "Maureen Renaud"
+date: "7/22/2020"
+output:
+  html_document:
+    code_folding: hide 
+    toc: true
+    toc_float: true
+    toc_depth: 5
+---
+
+## INTRODUCTION
+
+The wealth of information available to retailers regarding thier customers' interactions with a company, purchases, and money spent is a goldmine for marketting analysts.  The goal of this study is to use this data to meaningfully segment a company's constomers in order to better tailor marketing effors.
+
+The data from this study was obtained from a study on data mining for the online retail industry (Daqing Chen et al, 2012)^1^ and contains all the transactions occurring between 01/12/2010 and 09/12/2011 for a UK-based and registered online retail business.
+
+The goal of this study is to determine if this company's consumers can be segmented meaningfully by the recency and duration of their interaction with the company, the frequency of their purchases/orders, and the amount they spent using cluster analysis.
+
+In order to examine these possibilities, I used k-means clustering and hierarchical clustering.  According to _An Introduction to Statistical Learning_^2^, K-Means Clustering involves using an algorithm to assign each observation to one of K specified clusters.  An important issue when using K-Means Clustering is determining how many clusters should be used.  In order to select this number I looked for a low value for Within Clusters Sum of Square.  It's also important to determine the observations assigned to a cluster truly share similarities or were just allocated there by chance.  Unfortunately, there is no standard way of making this determination.  However, if we make intelligent decisions regarding the standardization of variables and look at clustering the data with a number of parameters, we can take away important findings from using these methods.
+
+Hierarchical clustering is an alternative to K-Means clustering that does not require pre-specification of the numbers of clusters.  Another advantage of hierarchical clusterinq, is that the results are presented in a dendogram, which may make analyzing the results easier.  Like with K-Means clustering, it still is important to ensure that the clusters truly share similarities and are not just allocated there by chance.  However, like K-Means clustering, this tool can also provide valuable information if used properly.
+
+After log-transforming and standardizing the variables, I assessed the data using five and then ten K-Means clusters.  I then analyzed the data using hierarchical clustering, I developed the clusters first using Euclidean distance and then using correlation-based distance.  For both distances, I looked at complete and average linkage.
+
+While there was some variation, most of the clusters across all methods showed that customers who made their purchases more recently and those who had been customers for a greater duration spent more money.  There was not as clear of a relationship between number of purchases per month and total amount of money spent.
+
+This is valuable information for a market analyst.  Using this data, they can focus on maintaining customers over the long haul rather than focus on how many purchases a customer makes in any given period.
+
+
+## DATA
+
+The data from this study was obtained from a study on data mining for the online retail industry (Daqing Chen et al, 2012)^1^ and contains contains all the transactions occurring between 12/01/2010 and 11/30/2011 for a UK-based and registered online retail business.  The data set initially contained 541909 observations from 8 variables. 
+
+Step one was to remove NAs and duplicate entries.  Then two new variables were added: Invoice Month, which indicated what month the purcase occured in and Amount, which was the quantity multiplied the item price.  The result was a data set with 504813 observations and 10 variables.  A complete description of the variables in the cleaned data set is provided below.
+
+Finally, a new data set was created by eliminating catefories like InvoiceNo, and Description, which would not add value to this assessment and creating a new variable, Months, which assessed the duration of involvement a customer had with the company.  The data set to be used for analysis included 9 variables and 4286 observations.  The variables are detailed below:
+
+```{r message = F, warning = F, results = "hide"}
+RNGkind(sample.kind="Rounding")
+
+library(readxl)                                      # you may need to install the 'readxl' package first
+eretail = read_excel("Online Retail.xlsx")
+dim(eretail)
+names(eretail)
+
+eretail = eretail[eretail$Country != "Unspecified",] # remove 'unspecified' country
+eretail = eretail[eretail$Quantity > 0,]             # remove returns/cancellations
+
+IDtab = table(eretail$Country, eretail$CustomerID)   # crosstab country by customer ID
+IDtab = apply(IDtab >0, 2, sum)                      # is any customer ID duplicated across countries?
+duplicateIDs = names(IDtab[IDtab > 1])               # duplicate IDs to clean up
+eretail = eretail[!is.element(eretail$CustomerID, duplicateIDs),]
+rm(IDtab)
+
+eretail$InvoiceMth = substr(eretail$InvoiceDate, 1, 7)         # extract month of invoice
+eretail = eretail[as.vector(eretail$InvoiceMth) != "2011-12",] # remove December 2011 as it only covers first week
+
+eretail$Amount = eretail$Quantity * eretail$UnitPrice           # compute amount per invoice item
+
+eaggr = aggregate(Amount~Country+CustomerID, data=eretail, sum) # compute aggregate amount spent per customer
+row.names(eaggr) = eaggr$CustomerID
+eaggr = eaggr[,-2]
+eaggr = cbind(eaggr, aggregate(InvoiceMth~CustomerID, data=eretail, min)[,-1]) # 1st month of customer interaction
+names(eaggr)[3] = "FirstMth"
+eaggr = cbind(eaggr, aggregate(InvoiceMth~CustomerID, data=eretail, max)[,-1]) # last month of cust. interaction
+names(eaggr)[4] = "LastMth"
+
+# relabel months and compute duration of customer interaction
+eaggr$FirstMth <- as.factor(eaggr$FirstMth)
+eaggr$LastMth <- as.factor(eaggr$LastMth)
+levels(eaggr$FirstMth) = 1:12
+levels(eaggr$LastMth) = 1:12
+eaggr$Months = as.numeric(eaggr$LastMth) - as.numeric(eaggr$FirstMth) + 1
+
+eaggr = cbind(eaggr, apply( table(eretail$CustomerID, eretail$InvoiceMth) , 1, sum ) )
+names(eaggr)[6] = "Purchases"
+
+# Some useful statistics (which you may or may not decide to use)
+eaggr$Amount.per.Purchase = eaggr$Amount / eaggr$Purchases
+eaggr$Purchases.per.Month = eaggr$Purchases / eaggr$Months
+eaggr$Amount.per.Month = eaggr$Amount / eaggr$Months
+
+eaggr[1:30,]
+```
+
+
+
+
+Variable           | Description                                         
+-------------------|---------------------------------------------------
+Country            | Country Name
+Amount             | Quantity multiplied by unit price for total sale amount
+First Month        | First Month of Customer Ineraction
+Last Mont          | Last Month of Customer Interaction
+Months             | Duration of Customer Interaction in months
+Purchases          | Number of purchases
+Amount.per.Purchase| Amount spent per purchase
+Purchases.per.Month| Purchases per month
+Amount.per.Mont    | Amount spent per month
+
+
+### EXAMINING DISTRIBUTIONS {.tabset .tabset-fade .tabset-pills}
+
+Now, I wanted to assess the distribution of the numerical variables.  Looking at the data, these variables definitely appeared to be strongly right skewed.  So, I will took the log transformation of the variables. 
+
+After taking the log transformation, all of the variables appeared to be much closer to a normal distribution, with the exception of Months, which appears to have a bimodal distribution.  Of course, First and Last Month do not have a normal distribution, but it was unlikely they would end up with such a distribution given that there is no reason to expect that purchases per month would be normally distributed. 
+
+
+#### BEFORE TRANSFORMATIONS
+
+```{r warning = F, message = F}
+library(ggplot2)
+library(reshape2)
+
+eaggr$FirstMth <- as.numeric(eaggr$FirstMth)
+eaggr$LastMth <- as.numeric(eaggr$LastMth)
+
+melt.eaggr <- melt(eaggr[,-1])
+
+
+ggplot(data = melt.eaggr, aes(x = value)) + 
+stat_density() + 
+facet_wrap(~variable, scales = "free")
+```
+
+
+#### LOG TRANSFORMATION
+
+```{r}
+
+ggplot(data = melt.eaggr, aes(x = log(value + .1))) + 
+stat_density() + 
+facet_wrap(~variable, scales = "free")
+```
+
+
+### SCALING THE DATA
+
+```{r}
+eaggr$Amount <- log(eaggr$Amount + 0.1)
+eaggr$Purchases <- log(eaggr$Purchases + 0.1)
+eaggr$Amount.per.Purchase <- log(eaggr$Amount.per.Purchase + 0.1)
+eaggr$Purchases.per.Month <- log(eaggr$Purchases.per.Month + 0.1)
+eaggr$Amount.per.Month <- log(eaggr$Amount.per.Month + 0.1)
+```
+
+The last thing I will do before I begin the analyses is to scale the data.
+
+```{r}
+scaled.eaggr <- scale(eaggr[,-1])
+```
+
+## ANALYSES
+
+Now that we have examined the data, I would like to apply a number of different classication techniques and see if I can detect any patterns. I will first determine which number of clusters results in the lowest with-in cluster sum of squares.  While the absolute lowest within cluster sum of squares occurs at 30 clusters, the sharpest part of the plot occurs from 1 - 4 clusters.  So, I will examine 5 clusters and then to check for consistency, I will examine 10 clusters.
+
+### K MEANS CLUSTERING {.tabset .tabset-fade .tabset-pills}
+
+```{r warning = F, message = F, results = "hide"}
+total.within.ss.1 <- vector()
+set.seed(2)
+for(i in 1:30){
+  km.out = kmeans(scaled.eaggr, i, nstart = 20)
+  total.within.ss <- km.out$tot.withinss
+  total.within.ss.1[i] <- total.within.ss
+}
+
+total.within.ss.1
+min(total.within.ss.1[1:20])
+
+k <- c(1:30)
+within.ss.data <- as.data.frame(cbind(k, total.within.ss.1))
+within.ss.plot <- ggplot(data = within.ss.data, aes(x = k, y = total.within.ss.1)) + 
+   geom_bar(stat = "identity") +
+   geom_col(aes(fill = k == which.min(total.within.ss.1))) +
+   labs(x = 'K', y = 'Within Cluster Sum of Squares', title = 'Within Cluster Sum of Squares Each K-Value') +
+   scale_x_continuous(breaks = 1:30) +
+   scale_fill_discrete(name="Lowest SS")
+```
+
+```{r}
+within.ss.plot
+```
+
+
+As previously mentioned, the goal of this study is to determine if it is possible to segment this meaningfully by the recency and duration of their interaction with the company, the frequency of their purchases/orders, and the amount they spent.
+
+Looking at the 5 cluster setup, I see that the three clusters with the latest value for last month, also had the highest values Amount and the cluster with the largest value for months, had the largest value for amount.
+
+The two highest values for Purchases.per.month had some of the highest amount values, but that relationship does not seem as defined as what I observe with the other variables.
+
+So, based on 5 clusters, it appears that customers that made purchases most recently and that have been customers the longest, typically spend more.  
+
+Using 10 clusters, it does not seem as definite that customers making purchases toward the end of the year spend the most.  Though, it does appear that customers who have been with the company longer do tend to spend more.  There also is not as strong of a relationship between purchases per month and overall amount spent.
+
+
+#### 5 CLUSTERS
+ 
+```{r warning = F, message = F}
+set.seed (2)
+km.out = kmeans(scaled.eaggr,5, nstart = 20)
+km.out$centers
+```
+
+
+#### 10 CLUSTERS
+
+```{r warning = F, message = F}
+set.seed (2)
+km.out.2 = kmeans(scaled.eaggr, 10, nstart = 20)
+km.out.2$centers
+```
+
+
+
+### HIERARCHICAL CLUSTERING
+
+I will now examine this data using hierarchical clustering.  The data is already scaled and I can evaluate the hierarchical clusters using complete, average, and single linkage.
+
+Complete linkage looks for the largest pairwise dissimilarity between the observations in Cluster A and the observations in Cluster B.  Average linkage compares the average pairwise dissimilarity between the observations in Cluster A and the observations in Cluster B.  Single linkage looks for the smallest dissimilarities between the observations in Cluster A and the observations in Cluster B.  
+
+Average and complete linkage are typically preferred as they typically result in amore balanced dendogram while single linkage may result in extended, trailing clusters where it is more difficult to pinpoint clusters. 
+
+
+#### COMPLETE DATA SET WITH EUCLIDEAN DISTANCE {.tabset .tabset-fade .tabset-pills}
+
+Below I have analyzed the full data set using complete, average, and single linkage.  However, due to the large numbers of variables, it is hard to make sense of the plots as seen below.  
+
+
+```{r}
+hc.complete = hclust(dist(scaled.eaggr), method = "complete")
+hc.average = hclust(dist(scaled.eaggr), method = "average")
+hc.single = hclust(dist(scaled.eaggr), method = "single")
+```
+
+```{r fig.width = 10}
+
+plot(hc.complete, main = "Complete Linkage" , xlab= "", sub = "",
+cex = .9)
+plot(hc.average, main = " Average Linkage", xlab= "", sub = "",
+cex =.9)
+plot(hc.single, main= "Single Linkage", xlab = "", sub = "",
+cex =.9)
+```
+
+
+Fortunately, we can still break the data out of each of these plots and take a closer look at it.  I will do this, taking a closer look at the clusters formed by using complete and average linkage.  Looking at both of these types of linkage, I see a clear connection between a greater duration of being a customer and amount spent.  There is not as clear of relationship between last month of purchase or purchases per month and total amount spent.
+
+
+##### COMPLETE LINKAGE
+
+```{r}
+
+hc.out = hclust(dist(scaled.eaggr))
+hc.clusters = cutree(hc.out, 8)
+
+Branch.complete.1 <- as.data.frame(eaggr[which(hc.clusters == "1"),])
+Branch.complete.2 <- as.data.frame(eaggr[which(hc.clusters == "2"),])
+Branch.complete.3 <- as.data.frame(eaggr[which(hc.clusters == "3"),])
+Branch.complete.4 <- as.data.frame(eaggr[which(hc.clusters == "4"),])
+Branch.complete.5 <- as.data.frame(eaggr[which(hc.clusters == "5"),])
+Branch.complete.6 <- as.data.frame(eaggr[which(hc.clusters == "6"),])
+Branch.complete.7 <- as.data.frame(eaggr[which(hc.clusters == "7"),])
+Branch.complete.8 <- as.data.frame(eaggr[which(hc.clusters == "8"),])
+
+Branch.complete.1.means <- sapply(Branch.complete.1[,-1], FUN=mean)
+Branch.complete.2.means <- sapply(Branch.complete.2[,-1], FUN=mean)
+Branch.complete.3.means <- sapply(Branch.complete.3[,-1], FUN=mean)
+Branch.complete.4.means <- sapply(Branch.complete.4[,-1], FUN=mean)
+Branch.complete.5.means <- sapply(Branch.complete.5[,-1], FUN=mean)
+Branch.complete.6.means <- sapply(Branch.complete.6[,-1], FUN=mean)
+Branch.complete.7.means <- sapply(Branch.complete.7[,-1], FUN=mean)
+Branch.complete.8.means <- sapply(Branch.complete.8[,-1], FUN=mean)
+
+
+Complete.means <- rbind(Branch.complete.1.means, Branch.complete.2.means, Branch.complete.3.means, Branch.complete.4.means, Branch.complete.5.means, Branch.complete.6.means, Branch.complete.7.means,
+                        Branch.complete.8.means)
+
+row.names(Complete.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4", "Branch 5", "Branch 6",
+                                "Branch 7", "Branch 8"))
+Complete.means
+
+```
+
+
+##### AVERAGE LINKAGE
+
+```{r}
+
+hc.ave.clusters = cutree(hc.average, 8)
+
+Branch.ave.1 <- as.data.frame(eaggr[which(hc.ave.clusters == "1"),])
+Branch.ave.2 <- as.data.frame(eaggr[which(hc.ave.clusters == "2"),])
+Branch.ave.3 <- as.data.frame(eaggr[which(hc.ave.clusters == "3"),])
+Branch.ave.4 <- as.data.frame(eaggr[which(hc.ave.clusters == "4"),])
+Branch.ave.5 <- as.data.frame(eaggr[which(hc.ave.clusters == "5"),])
+Branch.ave.6 <- as.data.frame(eaggr[which(hc.ave.clusters == "6"),])
+Branch.ave.7 <- as.data.frame(eaggr[which(hc.ave.clusters == "7"),])
+Branch.ave.8 <- as.data.frame(eaggr[which(hc.ave.clusters == "8"),])
+
+Branch.ave.1.means <- sapply(Branch.ave.1[,-1], FUN=mean)
+Branch.ave.2.means <- sapply(Branch.ave.2[,-1], FUN=mean)
+Branch.ave.3.means <- sapply(Branch.ave.3[,-1], FUN=mean)
+Branch.ave.4.means <- sapply(Branch.ave.4[,-1], FUN=mean)
+Branch.ave.5.means <- sapply(Branch.ave.5[,-1], FUN=mean)
+Branch.ave.6.means <- sapply(Branch.ave.6[,-1], FUN=mean)
+Branch.ave.7.means <- sapply(Branch.ave.7[,-1], FUN=mean)
+Branch.ave.8.means <- sapply(Branch.ave.8[,-1], FUN=mean)
+
+
+Average.means <- rbind(Branch.ave.1.means, Branch.ave.2.means, Branch.ave.3.means, Branch.ave.4.means, Branch.ave.5.means, Branch.ave.6.means, Branch.ave.7.means,
+                        Branch.ave.8.means)
+
+row.names(Average.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4", "Branch 5", "Branch 6",
+                                "Branch 7", "Branch 8"))
+Average.means
+
+```
+
+
+#### COMPLETE DATA SET USING CORRELATION BASED DISTANCE {.tabset .tabset-fade .tabset-pills}
+
+Additionally, I have used correlation-based distance. This is an option when you have at least three features and can give you another perspective on the data.  We can also use complete, average, and single linkage to determine the clusters.  Like above, the plots are not legible enough to make sense of, but I can take a closer look at the clusters created by using complete and average linking by looking at the breakdown of the data.
+
+```{r}
+dd = as.dist(1- cor(t(scaled.eaggr)))
+
+hc.corr.complete = hclust(dd, method = "complete")
+hc.corr.average = hclust(dd, method = "average")
+hc.corr.single = hclust(dd, method = "single")
+
+plot(hc.corr.complete, main= "Complete Linkage")
+plot(hc.corr.average, main= "Average Linkage")
+plot(hc.corr.single, main= "Single Linkage")
+
+```
+
+I will now take a closer look at the clusters formed by using complete and average linkage.  Similarly to when I used Euclidean Distance, looking at both of these types of linkage, I see a clear connection between a greater duration of being a customer and amount spent.  There is not as clear of relationship between last month of purchase or purchases per month and total amount spent.
+
+
+##### COMPLETE LINKAGE
+
+```{r}
+
+hc.corr.complete.clusters = cutree(hc.corr.complete, 8)
+
+Branch.corr.complete.1 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "1"),])
+Branch.corr.complete.2 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "2"),])
+Branch.corr.complete.3 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "3"),])
+Branch.corr.complete.4 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "4"),])
+Branch.corr.complete.5 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "5"),])
+Branch.corr.complete.6 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "6"),])
+Branch.corr.complete.7 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "7"),])
+Branch.corr.complete.8 <- as.data.frame(eaggr[which(hc.corr.complete.clusters == "8"),])
+
+Branch.corr.complete.1.means <- sapply(Branch.corr.complete.1[,-1], FUN=mean)
+Branch.corr.complete.2.means <- sapply(Branch.corr.complete.2[,-1], FUN=mean)
+Branch.corr.complete.3.means <- sapply(Branch.corr.complete.3[,-1], FUN=mean)
+Branch.corr.complete.4.means <- sapply(Branch.corr.complete.4[,-1], FUN=mean)
+Branch.corr.complete.5.means <- sapply(Branch.corr.complete.5[,-1], FUN=mean)
+Branch.corr.complete.6.means <- sapply(Branch.corr.complete.6[,-1], FUN=mean)
+Branch.corr.complete.7.means <- sapply(Branch.corr.complete.7[,-1], FUN=mean)
+Branch.corr.complete.8.means <- sapply(Branch.corr.complete.8[,-1], FUN=mean)
+
+
+Complete.corr.means <- rbind(Branch.corr.complete.1.means, Branch.corr.complete.2.means, Branch.corr.complete.3.means, Branch.corr.complete.4.means, Branch.corr.complete.5.means, Branch.corr.complete.6.means, Branch.corr.complete.7.means,
+                        Branch.corr.complete.8.means)
+
+row.names(Complete.corr.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4", "Branch 5", "Branch 6",
+                                "Branch 7", "Branch 8"))
+Complete.corr.means
+
+```
+
+
+##### AVERAGE LINKAGE
+
+```{r}
+hc.corr.ave.clusters = cutree(hc.corr.average, 8)
+
+Branch.corr.ave.1 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "1"),])
+Branch.corr.ave.2 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "2"),])
+Branch.corr.ave.3 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "3"),])
+Branch.corr.ave.4 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "4"),])
+Branch.corr.ave.5 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "5"),])
+Branch.corr.ave.6 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "6"),])
+Branch.corr.ave.7 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "7"),])
+Branch.corr.ave.8 <- as.data.frame(eaggr[which(hc.corr.ave.clusters == "8"),])
+
+Branch.corr.ave.1.means <- sapply(Branch.corr.ave.1[,-1], FUN=mean)
+Branch.corr.ave.2.means <- sapply(Branch.corr.ave.2[,-1], FUN=mean)
+Branch.corr.ave.3.means <- sapply(Branch.corr.ave.3[,-1], FUN=mean)
+Branch.corr.ave.4.means <- sapply(Branch.corr.ave.4[,-1], FUN=mean)
+Branch.corr.ave.5.means <- sapply(Branch.corr.ave.5[,-1], FUN=mean)
+Branch.corr.ave.6.means <- sapply(Branch.corr.ave.6[,-1], FUN=mean)
+Branch.corr.ave.7.means <- sapply(Branch.corr.ave.7[,-1], FUN=mean)
+Branch.corr.ave.8.means <- sapply(Branch.corr.ave.8[,-1], FUN=mean)
+
+
+Average.corr.means <- rbind(Branch.corr.ave.1.means, Branch.corr.ave.2.means, Branch.corr.ave.3.means,                                          Branch.corr.ave.4.means, Branch.corr.ave.5.means, Branch.corr.ave.6.means,                                          Branch.corr.ave.7.means, Branch.corr.ave.8.means)
+
+row.names(Average.corr.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4", "Branch 5", "Branch 6",
+                                "Branch 7", "Branch 8"))
+Average.corr.means
+```
+
+
+#### COUNTRIES {.tabset .tabset-fade .tabset-pills}
+
+
+Now that I have examined the data set as a whole, I'd like to take the time the countries themselves.  The first thing I would like to do is to examine if country is centered in any particular cluster.  Interestingly enough, no country with a signficant number of observations had its observations focused in one branch when it came to complete linkage.  However, when using average and single linkage, there were several countries that had their observations focused in one branch.
+
+When looking at both complete and average linkage, Branches 1 and 4 tended to have the higher values for amount spent and branches 7 and 8 tended to have lower values for amount spent.  I thought it would be interesting to see if any country showed up frequently in any of those branches, but outside of the UK, there was not evidence of that.  And due to the fact that most of the customers are from the UK, they show up in all of the branches.
+
+```{r warning = F, message = F}
+library(ggdendro)
+country.complete = hclust(dist(scaled.eaggr), method = "complete")
+country.average = hclust(dist(scaled.eaggr), method = "average")
+country.single = hclust(dist(scaled.eaggr), method = "single")
+```
+
+
+##### COMPLETE LINKAGE
+
+```{r}
+hc.clusters.complete.country = cutree(country.complete,8)
+table(hc.clusters.complete.country, eaggr$Country)
+```
+
+
+##### AVERAGE LINKAGE
+
+```{r}
+hc.clusters.average.country = cutree(country.average,8)
+table(hc.clusters.average.country, eaggr$Country)
+```
+
+
+##### SINGLE LINKAGE
+
+```{r}
+hc.clusters.single.country = cutree(country.single,8)
+table(hc.clusters.single.country, eaggr$Country)
+```
+
+
+#### INDIVIDUAL COUNTRIES {.tabset .tabset-fade .tabset-pills}
+
+In order to examine individual countries, I chose two at random to examine patterns and trends in.  I examined both Spain and France and looked at hierarchical clustering with complete and average linkage.  No major patterns jumped out at me with either country.  However, this is definitely an area for an analyst to further explore if they would like to hone in on their country-specific market.
+
+
+##### FRANCE {.tabset .tabset-fade .tabset-pills}
+
+```{r}
+France.data <- subset(eaggr, Country == "France")
+hc.France.complete = hclust(dist(France.data[,-1]), method = "complete")
+hc.France.average = hclust(dist(France.data[,-1]), method = "average")
+hc.France.single = hclust(dist(France.data[,-1]), method = "single")
+```
+
+```{r fig.width = 10}
+plot(hc.France.complete, main = "Complete Linkage" , xlab= "", sub = "",
+cex = .5)
+plot(hc.France.average, main = " Average Linkage", xlab= "", sub = "",
+cex =.5)
+plot(hc.France.single, main= "Single Linkage", xlab = "", sub = "",
+cex =.5)
+```
+
+
+###### COMPLETE LINKAGE
+
+
+```{r message = F}
+ 
+hc.clusters.France.complete = cutree(hc.France.complete, 4)
+
+Branch.France.complete.1 <- as.data.frame(eaggr[which(hc.clusters.France.complete == "1"),])
+Branch.France.complete.2 <- as.data.frame(eaggr[which(hc.clusters.France.complete == "2"),])
+Branch.France.complete.3 <- as.data.frame(eaggr[which(hc.clusters.France.complete == "3"),])
+Branch.France.complete.4 <- as.data.frame(eaggr[which(hc.clusters.France.complete == "4"),])
+
+
+Branch.France.complete.1.means <- sapply(Branch.France.complete.1[,-1], FUN=mean)
+Branch.France.complete.2.means <- sapply(Branch.France.complete.2[,-1], FUN=mean)
+Branch.France.complete.3.means <- sapply(Branch.France.complete.3[,-1], FUN=mean)
+Branch.France.complete.4.means <- sapply(Branch.France.complete.4[,-1], FUN=mean)
+
+
+Complete.France.means <- rbind(Branch.France.complete.1.means, Branch.France.complete.2.means, Branch.France.complete.3.means, Branch.France.complete.4.means)
+
+row.names(Complete.France.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4"))
+Complete.France.means
+```
+
+
+
+###### AVERAGE LINKAGE 
+
+```{r message = F}
+
+hc.clusters.France.average = cutree(hc.France.average, 4)
+
+Branch.France.average.1 <- as.data.frame(eaggr[which(hc.clusters.France.average == "1"),])
+Branch.France.average.2 <- as.data.frame(eaggr[which(hc.clusters.France.average == "2"),])
+Branch.France.average.3 <- as.data.frame(eaggr[which(hc.clusters.France.average== "3"),])
+Branch.France.average.4 <- as.data.frame(eaggr[which(hc.clusters.France.average == "4"),])
+
+
+Branch.France.average.1.means <- sapply(Branch.France.average.1[,-1], FUN=mean)
+Branch.France.average.2.means <- sapply(Branch.France.average.2[,-1], FUN=mean)
+Branch.France.average.3.means <- sapply(Branch.France.average.3[,-1], FUN=mean)
+Branch.France.average.4.means <- sapply(Branch.France.average.4[,-1], FUN=mean)
+
+
+Average.France.means <- rbind(Branch.France.average.1.means, Branch.France.average.2.means, Branch.France.average.3.means, Branch.France.average.4.means)
+
+row.names(Average.France.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4"))
+Average.France.means
+
+```
+
+
+
+##### SPAIN {.tabset .tabset-fade .tabset-pills}
+
+```{r}
+Spaindata <- subset(eaggr, Country == "Spain")
+hc.Spain.complete = hclust(dist(Spaindata[,-1]), method = "complete")
+hc.Spain.average = hclust(dist(Spaindata[,-1]), method = "average")
+hc.Spain.single = hclust(dist(Spaindata[,-1]), method = "single")
+```
+
+```{r}
+plot(hc.Spain.complete, main = "Complete Linkage" , xlab= "", sub = "",
+cex = .9)
+plot(hc.Spain.average, main = " Average Linkage", xlab= "", sub = "",
+cex =.9)
+plot(hc.Spain.single, main= "Single Linkage", xlab = "", sub = "",
+cex =.9)
+```
+
+
+###### COMPLETE LINKAGE
+
+It looks like I can make a solid break with three clusters:
+
+```{r message = F}
+hc.clusters.Spain.complete = cutree(hc.Spain.complete, 4)
+
+Branch.Spain.complete.1 <- as.data.frame(eaggr[which(hc.clusters.Spain.complete == "1"),])
+Branch.Spain.complete.2 <- as.data.frame(eaggr[which(hc.clusters.Spain.complete == "2"),])
+Branch.Spain.complete.3 <- as.data.frame(eaggr[which(hc.clusters.Spain.complete == "3"),])
+Branch.Spain.complete.4 <- as.data.frame(eaggr[which(hc.clusters.Spain.complete == "4"),])
+
+
+Branch.Spain.complete.1.means <- sapply(Branch.Spain.complete.1[,-1], FUN=mean)
+Branch.Spain.complete.2.means <- sapply(Branch.Spain.complete.2[,-1], FUN=mean)
+Branch.Spain.complete.3.means <- sapply(Branch.Spain.complete.3[,-1], FUN=mean)
+Branch.Spain.complete.4.means <- sapply(Branch.Spain.complete.4[,-1], FUN=mean)
+
+
+Complete.Spain.means <- rbind(Branch.Spain.complete.1.means, Branch.Spain.complete.2.means, Branch.Spain.complete.3.means, Branch.Spain.complete.4.means)
+
+row.names(Complete.Spain.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4"))
+Complete.Spain.means
+```
+
+
+
+###### AVERAGE LINKAGE 
+
+```{r message = F}
+
+hc.clusters.Spain.average = cutree(hc.Spain.average, 4)
+
+Branch.Spain.average.1 <- as.data.frame(eaggr[which(hc.clusters.Spain.average == "1"),])
+Branch.Spain.average.2 <- as.data.frame(eaggr[which(hc.clusters.Spain.average == "2"),])
+Branch.Spain.average.3 <- as.data.frame(eaggr[which(hc.clusters.Spain.average== "3"),])
+Branch.Spain.average.4 <- as.data.frame(eaggr[which(hc.clusters.Spain.average == "4"),])
+
+
+Branch.Spain.average.1.means <- sapply(Branch.Spain.average.1[,-1], FUN=mean)
+Branch.Spain.average.2.means <- sapply(Branch.Spain.average.2[,-1], FUN=mean)
+Branch.Spain.average.3.means <- sapply(Branch.Spain.average.3[,-1], FUN=mean)
+Branch.Spain.average.4.means <- sapply(Branch.Spain.average.4[,-1], FUN=mean)
+
+
+Average.Spain.means <- rbind(Branch.Spain.average.1.means, Branch.Spain.average.2.means, Branch.Spain.average.3.means, Branch.Spain.average.4.means)
+
+row.names(Average.Spain.means) <- (c("Branch 1", "Branch 2", "Branch 3", "Branch 4"))
+Average.Spain.means
+
+```
+
+
+
+## CONCLUSION AND RECOMMENDATIONS
+
+I examined this data using both K-Means clustering and Hierarchical clustering.  Within hierarchical clustering, I looked at Euclidean based and correlation based distance and complete, average, and singele linkage. 
+
+While there was some variation, most of the clusters across all methods showed that customers who made their purchases more recently and those who had been customers for a greater duration spent more money.  There was not as clear of a relationship between frequency of purchases and total amount of money spent.
+
+I also examined the data based on country groups and while there wasn't a direct link between country and total amount spent, there could be other associations found in the data.
+
+Overall, this is valuable information for a market analyst.  Using this data, they can focus on maintaining customers over the long haul rather than focus on how many purchases a customer makes in any given period in order to increase total sales and help their business flourish.
+
+
+## SOURCES
+
+1) Daqing Chen, Sai Liang Sain, and Kun Guo, Data mining for the online retail industry: A case study of RFM model-based customer segmentation using data mining, Journal of Database Marketing and Customer Strategy Management, Vol. 19, No. 3, pp. 197-208, 2012 (Published online before print: 27 August 2012. doi: 10.1057/dbm.2012.17)
+
+2) James, G et al. (2017). _An Introduction To Statistical Learning_. New York, NY.  
